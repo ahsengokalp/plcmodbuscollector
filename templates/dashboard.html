@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Dikkan PLC Dashboard</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css', v=asset_version) }}">
   </head>
   <body>
     <header class="topbar">
@@ -89,6 +89,6 @@
     </main>
 
     <div class="toast" id="errorToast" role="status"></div>
-    <script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+    <script src="{{ url_for('static', filename='dashboard.js', v=asset_version) }}"></script>
   </body>
 </html>
