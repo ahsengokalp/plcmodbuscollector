@@ -2,6 +2,7 @@ from pymodbus.client import ModbusTcpClient
 from dotenv import load_dotenv
 import psycopg2
 import os
+import time
 from datetime import datetime
 
 load_dotenv()
@@ -43,6 +44,11 @@ DB_NAME = os.getenv("DB_NAME")
 DB_USER = os.getenv("DB_USER")
 DB_PASS = os.getenv("DB_PASS")
 
+START_ADDRESS = 4506
+START_MODBUS_ADDRESS = 44507
+REGISTER_COUNT = 24
+POLL_INTERVAL_SECONDS = 1
+
 
 def get_db_connection():
     return psycopg2.connect(
@@ -61,12 +67,10 @@ def read_modbus_data():
         print("Modbus bağlantısı başarısız ❌")
         return None
 
-    print("Modbus bağlantısı başarılı ✅")
-
     try:
         result = client.read_holding_registers(
-            address=4506,
-            count=24,
+            address=START_ADDRESS,
+            count=REGISTER_COUNT,
             device_id=MODBUS_DEVICE_ID
         )
 
@@ -76,21 +80,51 @@ def read_modbus_data():
 
         data = []
         for i, value in enumerate(result.registers):
-            modbus_address = 44507 + i
+            modbus_address = START_MODBUS_ADDRESS + i
             tag_name = TAGS[i]
-            data.append((modbus_address, tag_name, int(value)))
+            raw_value = int(value)
+            data.append((modbus_address, tag_name, raw_value))
 
         return data
+
+    except Exception as e:
+        print("Modbus exception:", e)
+        return None
 
     finally:
         client.close()
 
 
-def save_to_postgres(data):
-    if not data:
-        print("Kaydedilecek veri yok.")
-        return
+def load_current_values():
+    conn = None
+    cur = None
+    current_values = {}
 
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT modbus_address, raw_value
+            FROM plc_current_values
+        """)
+        rows = cur.fetchall()
+
+        for modbus_address, raw_value in rows:
+            current_values[modbus_address] = raw_value
+
+    except Exception as e:
+        print("Current değerler yüklenemedi:", e)
+
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+    return current_values
+
+
+def insert_initial_current_values(data):
     conn = None
     cur = None
 
@@ -98,21 +132,98 @@ def save_to_postgres(data):
         conn = get_db_connection()
         cur = conn.cursor()
 
-        insert_query = """
-            INSERT INTO plc_readings (modbus_address, tag_name, raw_value, read_time)
+        upsert_query = """
+            INSERT INTO plc_current_values (modbus_address, tag_name, raw_value, updated_at)
             VALUES (%s, %s, %s, %s)
+            ON CONFLICT (modbus_address)
+            DO UPDATE SET
+                tag_name = EXCLUDED.tag_name,
+                raw_value = EXCLUDED.raw_value,
+                updated_at = EXCLUDED.updated_at
         """
 
-        read_time = datetime.now()
+        now = datetime.now()
 
         for modbus_address, tag_name, raw_value in data:
-            cur.execute(insert_query, (modbus_address, tag_name, raw_value, read_time))
+            cur.execute(upsert_query, (modbus_address, tag_name, raw_value, now))
 
         conn.commit()
-        print(f"{len(data)} kayıt veritabanına yazıldı ✅")
+        print(f"İlk yükleme yapıldı: {len(data)} current kayıt ✅")
 
     except Exception as e:
-        print("Veritabanı kayıt hatası:", e)
+        print("İlk current yükleme hatası:", e)
+        if conn:
+            conn.rollback()
+
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+
+def process_changes(data, current_values):
+    conn = None
+    cur = None
+    change_count = 0
+
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        history_insert_query = """
+            INSERT INTO plc_readings_history (
+                modbus_address, tag_name, old_value, new_value, changed_at
+            )
+            VALUES (%s, %s, %s, %s, %s)
+        """
+
+        current_upsert_query = """
+            INSERT INTO plc_current_values (modbus_address, tag_name, raw_value, updated_at)
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (modbus_address)
+            DO UPDATE SET
+                tag_name = EXCLUDED.tag_name,
+                raw_value = EXCLUDED.raw_value,
+                updated_at = EXCLUDED.updated_at
+        """
+
+        now = datetime.now()
+
+        for modbus_address, tag_name, new_value in data:
+            old_value = current_values.get(modbus_address)
+
+            if old_value is None:
+                cur.execute(
+                    current_upsert_query,
+                    (modbus_address, tag_name, new_value, now)
+                )
+                current_values[modbus_address] = new_value
+                continue
+
+            if new_value != old_value:
+                cur.execute(
+                    history_insert_query,
+                    (modbus_address, tag_name, old_value, new_value, now)
+                )
+
+                cur.execute(
+                    current_upsert_query,
+                    (modbus_address, tag_name, new_value, now)
+                )
+
+                current_values[modbus_address] = new_value
+                change_count += 1
+
+        conn.commit()
+
+        if change_count > 0:
+            print(f"Değişiklik kaydedildi ✅ Adet: {change_count}")
+        else:
+            print("Değişiklik yok.")
+
+    except Exception as e:
+        print("Değişiklik işleme hatası:", e)
         if conn:
             conn.rollback()
 
@@ -124,14 +235,31 @@ def save_to_postgres(data):
 
 
 def main():
-    data = read_modbus_data()
+    print("Servis başlıyor...")
 
-    if data:
-        print("\nOkunan veriler:\n")
-        for modbus_address, tag_name, raw_value in data:
-            print(f"{modbus_address} | {tag_name} | {raw_value}")
+    current_values = load_current_values()
 
-        save_to_postgres(data)
+    first_data = read_modbus_data()
+    if first_data is None:
+        print("İlk Modbus verisi alınamadı. Servis durduruldu.")
+        return
+
+    if not current_values:
+        print("Current tablo boş. İlk yükleme yapılıyor...")
+        insert_initial_current_values(first_data)
+        current_values = {modbus_address: raw_value for modbus_address, _, raw_value in first_data}
+    else:
+        print("Current değerler DB'den yüklendi.")
+
+    while True:
+        data = read_modbus_data()
+
+        if data is not None:
+            process_changes(data, current_values)
+        else:
+            print("Bu turda veri okunamadı.")
+
+        time.sleep(POLL_INTERVAL_SECONDS)
 
 
 if __name__ == "__main__":
