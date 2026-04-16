@@ -7,13 +7,13 @@ PLC register degerlerini Modbus TCP ile okuyup PostgreSQL'e yazar ve Flask taban
 Collector servisi:
 
 ```powershell
-python collector.py
+python main.py collector
 ```
 
 Dashboard:
 
 ```powershell
-python dashboard.py
+python main.py dashboard
 ```
 
 Arayuz varsayilan olarak su adreste acilir:
@@ -30,5 +30,4 @@ http://127.0.0.1:5000
 - `db.py`: Ortak PostgreSQL baglantisi.
 - `templates/`: HTML sayfalari.
 - `static/`: CSS ve JavaScript dosyalari.
-- `main.py`: Eski komutla uyumluluk icin collector girisi.
-- `app.py`: Eski komutla uyumluluk icin dashboard girisi.
+- `main.py`: Collector ve dashboard icin tek giris dosyasi.
