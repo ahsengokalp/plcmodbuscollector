@@ -2,7 +2,7 @@
   currentValues: [],
   recentChanges: [],
   trend: [],
-  quickFilter: "all",
+  selectedAddress: "all",
 };
 
 const elements = {
@@ -13,9 +13,8 @@ const elements = {
   lastUpdate: document.getElementById("lastUpdate"),
   connectionState: document.getElementById("connectionState"),
   generatedAt: document.getElementById("generatedAt"),
+  tagSelect: document.getElementById("tagSelect"),
   tagList: document.getElementById("tagList"),
-  tagFilter: document.getElementById("tagFilter"),
-  filterButtons: document.querySelectorAll("[data-filter]"),
   changesTable: document.getElementById("changesTable"),
   trendChart: document.getElementById("trendChart"),
   errorToast: document.getElementById("errorToast"),
@@ -50,35 +49,16 @@ function pillClass(status) {
   return "ok-pill";
 }
 
-function itemMatchesText(item) {
-  const filter = elements.tagFilter.value.trim().toLocaleLowerCase("tr-TR");
-  if (!filter) return true;
-
-  const haystack = `${item.tag_name} ${item.modbus_address}`.toLocaleLowerCase("tr-TR");
-  return haystack.includes(filter);
+function matchesSelectedTag(item) {
+  return state.selectedAddress === "all" || String(item.modbus_address) === state.selectedAddress;
 }
 
-function itemMatchesQuickFilter(item) {
-  const tagName = item.tag_name.toLocaleUpperCase("tr-TR");
-
-  if (state.quickFilter === "f1") return tagName.includes("F_1");
-  if (state.quickFilter === "f2") return tagName.includes("F_2");
-  if (state.quickFilter === "isi") return tagName.includes("ISI");
-  if (state.quickFilter === "critical") return item.status === "critical";
-  return true;
+function selectedCurrentValues() {
+  return state.currentValues.filter(matchesSelectedTag);
 }
 
-function itemMatchesFilters(item) {
-  return itemMatchesText(item) && itemMatchesQuickFilter(item);
-}
-
-function setQuickFilter(filter) {
-  state.quickFilter = filter;
-  elements.filterButtons.forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.filter === filter);
-  });
-  renderTagList();
-  renderChangesTable();
+function selectedChanges() {
+  return state.recentChanges.filter(matchesSelectedTag);
 }
 
 function setupCanvas(canvas) {
@@ -102,10 +82,23 @@ function drawEmptyChart(message) {
   ctx.fillText(message, width / 2, height / 2);
 }
 
+function trendForSelection() {
+  if (state.selectedAddress === "all") return state.trend;
+
+  return selectedChanges()
+    .slice(0, 30)
+    .reverse()
+    .map((item) => ({
+      label: item.changed_at.slice(11, 16),
+      value: item.new_value,
+      tag_name: item.tag_name,
+    }));
+}
+
 function drawTrendChart() {
-  const points = state.trend;
+  const points = trendForSelection();
   if (points.length < 2) {
-    drawEmptyChart("Trend icin yeterli degisim yok.");
+    drawEmptyChart("Secilen tag icin yeterli degisim yok.");
     return;
   }
 
@@ -171,23 +164,41 @@ function drawTrendChart() {
   ctx.fillText(points[points.length - 1].label, width - pad.right, height - 12);
 }
 
+function populateTagSelect() {
+  const selected = state.selectedAddress;
+  const options = [
+    '<option value="all">Tum tagler</option>',
+    ...state.currentValues.map((item) => {
+      const value = String(item.modbus_address);
+      const label = `${item.modbus_address} - ${item.tag_name}`;
+      return `<option value="${value}">${escapeHtml(label)}</option>`;
+    }),
+  ];
+
+  elements.tagSelect.innerHTML = options.join("");
+  const stillExists = selected === "all" || state.currentValues.some(
+    (item) => String(item.modbus_address) === selected
+  );
+  state.selectedAddress = stillExists ? selected : "all";
+  elements.tagSelect.value = state.selectedAddress;
+}
+
 function renderMetrics(payload) {
   const stats = payload.stats;
   const alarmCount = stats.warning_count + stats.critical_count;
   setText("totalTags", stats.total_tags);
   setText("alarmCount", alarmCount);
   setText("changesToday", stats.changes_today);
-  setText("recentChangeCount", `${stats.recent_change_count} kayit`);
   setText("lastUpdate", stats.last_update);
   setText("connectionState", stats.connection_state);
   setText("generatedAt", `Guncel: ${payload.generated_at}`);
 }
 
 function renderTagList() {
-  const values = state.currentValues.filter(itemMatchesFilters);
+  const values = selectedCurrentValues();
 
   if (values.length === 0) {
-    elements.tagList.innerHTML = '<div class="empty-state">Kayit bulunamadi.</div>';
+    elements.tagList.innerHTML = '<div class="empty-state">Secilen tag bulunamadi.</div>';
     return;
   }
 
@@ -207,15 +218,15 @@ function renderTagList() {
 }
 
 function renderChangesTable() {
-  const changes = state.recentChanges.filter(itemMatchesFilters);
+  const changes = selectedChanges();
   const total = state.recentChanges.length;
-  const suffix = changes.length === total ? `${total} kayit` : `${changes.length}/${total} kayit`;
+  const suffix = state.selectedAddress === "all" ? `${total} kayit` : `${changes.length} kayit`;
   setText("recentChangeCount", suffix);
 
   if (changes.length === 0) {
     elements.changesTable.innerHTML = `
       <tr>
-        <td colspan="6" class="empty-state">Bu filtreye uygun degisim yok.</td>
+        <td colspan="6" class="empty-state">Secilen tag icin degisim yok.</td>
       </tr>
     `;
     return;
@@ -239,6 +250,18 @@ function renderChangesTable() {
     .join("");
 }
 
+function renderDashboard(payload) {
+  state.currentValues = payload.current_values;
+  state.recentChanges = payload.recent_changes;
+  state.trend = payload.charts.trend;
+
+  populateTagSelect();
+  renderMetrics(payload);
+  renderTagList();
+  renderChangesTable();
+  drawTrendChart();
+}
+
 async function loadDashboard() {
   try {
     const response = await fetch("/api/dashboard", { cache: "no-store" });
@@ -249,25 +272,17 @@ async function loadDashboard() {
     }
 
     hideError();
-    state.currentValues = payload.current_values;
-    state.recentChanges = payload.recent_changes;
-    state.trend = payload.charts.trend;
-
-    renderMetrics(payload);
-    renderTagList();
-    renderChangesTable();
-    drawTrendChart();
+    renderDashboard(payload);
   } catch (error) {
     showError(`Dashboard hatasi: ${error.message}`);
   }
 }
 
-elements.tagFilter.addEventListener("input", () => {
+elements.tagSelect.addEventListener("change", () => {
+  state.selectedAddress = elements.tagSelect.value;
   renderTagList();
   renderChangesTable();
-});
-elements.filterButtons.forEach((button) => {
-  button.addEventListener("click", () => setQuickFilter(button.dataset.filter));
+  drawTrendChart();
 });
 elements.refreshButton.addEventListener("click", loadDashboard);
 window.addEventListener("resize", drawTrendChart);

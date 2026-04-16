@@ -61,6 +61,33 @@ body {
   font-size: 12px;
 }
 
+.tag-picker {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.tag-picker span {
+  color: rgba(255, 255, 255, 0.82);
+  font-weight: 700;
+}
+
+.tag-picker select {
+  width: min(390px, 36vw);
+  height: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 4px;
+  padding: 0 34px 0 10px;
+  background: #fff;
+  color: #101828;
+  font: inherit;
+  outline: none;
+}
+
+.tag-picker select:focus {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.22);
+}
+
 .toolbar button {
   height: 30px;
   border: 1px solid rgba(255, 255, 255, 0.55);
@@ -186,59 +213,6 @@ body {
 
 .panel-title.compact {
   min-height: 68px;
-}
-
-.filter-bar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  min-width: min(580px, 56vw);
-}
-
-.filter-bar input {
-  width: min(260px, 44vw);
-  height: 34px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  padding: 0 10px;
-  color: var(--text);
-  font: inherit;
-  outline: none;
-}
-
-.filter-bar input:focus {
-  border-color: var(--blue);
-  box-shadow: 0 0 0 3px rgba(9, 104, 232, 0.12);
-}
-
-.filter-tabs {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: #f8fafc;
-}
-
-.filter-tabs button {
-  height: 28px;
-  border: 0;
-  border-radius: 4px;
-  padding: 0 9px;
-  background: transparent;
-  color: var(--muted);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.filter-tabs button.is-active {
-  background: var(--blue);
-  color: #fff;
 }
 
 .tag-list {
@@ -370,19 +344,8 @@ td {
     flex-direction: column;
   }
 
-  .filter-bar {
-    align-items: stretch;
-    flex-direction: column;
-    min-width: 0;
-    width: 100%;
-  }
-
-  .filter-bar input {
-    width: 100%;
-  }
-
-  .filter-tabs {
-    overflow-x: auto;
+  .tag-picker select {
+    width: min(360px, 48vw);
   }
 }
 
@@ -399,6 +362,19 @@ td {
 
   .brand {
     justify-content: space-between;
+    width: 100%;
+  }
+
+  .toolbar {
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .tag-picker {
+    flex: 1;
+  }
+
+  .tag-picker select {
     width: 100%;
   }
 }

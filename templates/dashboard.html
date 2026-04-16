@@ -14,6 +14,12 @@
         <span>PLC Dashboard</span>
       </div>
       <div class="toolbar">
+        <label class="tag-picker">
+          <span>Tag</span>
+          <select id="tagSelect">
+            <option value="all">Tum tagler</option>
+          </select>
+        </label>
         <span id="generatedAt">-</span>
         <button id="refreshButton" type="button">Yenile</button>
       </div>
@@ -56,17 +62,7 @@
           <div class="panel-title compact">
             <div>
               <h2>Anlik Degerler</h2>
-              <p>PLC register ve degisim filtresi</p>
-            </div>
-            <div class="filter-bar">
-              <input id="tagFilter" type="search" placeholder="Tag veya adres ara">
-              <div class="filter-tabs" aria-label="Hizli filtreler">
-                <button type="button" class="is-active" data-filter="all">Tumu</button>
-                <button type="button" data-filter="f1">Firin 1</button>
-                <button type="button" data-filter="f2">Firin 2</button>
-                <button type="button" data-filter="isi">Isi</button>
-                <button type="button" data-filter="critical">Kritik</button>
-              </div>
+              <p>Ust bardan secilen tag degeri</p>
             </div>
           </div>
           <div class="tag-list" id="tagList" aria-live="polite"></div>
