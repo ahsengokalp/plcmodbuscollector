@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dikkan PLC Takip Sistemi</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">Dikkan</div>
+        <div class="brand-title">PLC Takip Sistemi</div>
+      </div>
+      <nav class="top-actions" aria-label="Dashboard araclari">
+        <button class="icon-button" type="button" title="Yenile" id="refreshButton">↻</button>
+        <button class="icon-button" type="button" title="Ara">⌕</button>
+        <button class="text-button" type="button" title="Grafikler">Grafikler</button>
+        <button class="text-button ghost" type="button" title="Cikis">Cikis</button>
+      </nav>
+    </header>
+
+    <main class="shell">
+      <section class="metrics-grid" aria-label="Ozet metrikler">
+        <article class="metric-card cyan">
+          <span class="metric-icon">▣</span>
+          <div>
+            <p>Toplam Tag</p>
+            <strong id="totalTags">-</strong>
+          </div>
+        </article>
+        <article class="metric-card red">
+          <span class="metric-icon">△</span>
+          <div>
+            <p>Kritik Deger</p>
+            <strong id="criticalCount">-</strong>
+          </div>
+        </article>
+        <article class="metric-card green">
+          <span class="metric-icon">✓</span>
+          <div>
+            <p>Normal Deger</p>
+            <strong id="okCount">-</strong>
+          </div>
+        </article>
+        <article class="metric-card amber">
+          <span class="metric-icon">⌁</span>
+          <div>
+            <p>Uyari Deger</p>
+            <strong id="warningCount">-</strong>
+          </div>
+        </article>
+        <article class="metric-card teal">
+          <span class="metric-icon">↕</span>
+          <div>
+            <p>Bugun Degisen</p>
+            <strong id="changesToday">-</strong>
+          </div>
+        </article>
+        <article class="metric-card blue wide">
+          <span class="metric-icon">◷</span>
+          <div>
+            <p>Son Guncelleme</p>
+            <strong id="lastUpdate">-</strong>
+            <small id="connectionState">-</small>
+          </div>
+        </article>
+      </section>
+
+      <section class="workspace">
+        <aside class="side-panel">
+          <div class="panel-header">
+            <h2>Anlik Degerler</h2>
+            <span id="generatedAt">-</span>
+          </div>
+          <div class="search-row">
+            <input id="tagFilter" type="search" placeholder="Tag ara">
+          </div>
+          <div class="tag-list" id="tagList" aria-live="polite"></div>
+        </aside>
+
+        <section class="main-panel">
+          <div class="summary-strip">
+            <div>
+              <span>Alarm Kuyrugu</span>
+              <strong id="alarmQueue">-</strong>
+            </div>
+            <div>
+              <span>Son 50 Kayit</span>
+              <strong id="recentChangeCount">-</strong>
+            </div>
+            <div>
+              <span>Risk Esigi</span>
+              <strong id="warningThreshold">-</strong>
+            </div>
+            <div>
+              <span>Kritik Esik</span>
+              <strong id="criticalThreshold">-</strong>
+            </div>
+          </div>
+
+          <section class="charts-grid" aria-label="Grafikler">
+            <article class="chart-card hero-chart">
+              <div class="panel-header">
+                <h2>Canli Deger Trendi</h2>
+                <span>Son degisimler</span>
+              </div>
+              <canvas id="trendChart" height="220"></canvas>
+            </article>
+            <article class="chart-card">
+              <div class="panel-header">
+                <h2>Durum Dagilimi</h2>
+                <span>Anlik</span>
+              </div>
+              <canvas id="statusChart" height="220"></canvas>
+            </article>
+            <article class="chart-card">
+              <div class="panel-header">
+                <h2>En Hareketli Tagler</h2>
+                <span>Bugun</span>
+              </div>
+              <canvas id="topTagsChart" height="220"></canvas>
+            </article>
+            <article class="chart-card">
+              <div class="panel-header">
+                <h2>Isi Haritasi</h2>
+                <span>Yuksekten dusuge</span>
+              </div>
+              <div id="heatList" class="heat-list"></div>
+            </article>
+          </section>
+
+          <div class="table-card">
+            <div class="panel-header">
+              <h2>Degisim Gecmisi</h2>
+              <span>Son hareketler</span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Durum</th>
+                    <th>Adres</th>
+                    <th>Tag Adi</th>
+                    <th>Eski</th>
+                    <th>Yeni</th>
+                    <th>Fark</th>
+                    <th>Zaman</th>
+                  </tr>
+                </thead>
+                <tbody id="changesTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <div class="toast" id="errorToast" role="status"></div>
+    <script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+  </body>
+</html>
