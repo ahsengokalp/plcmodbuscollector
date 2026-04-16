@@ -49,12 +49,26 @@
       <section class="chart-panel">
         <div class="panel-title">
           <div>
-            <h1>Canli Deger Trendi</h1>
-            <p>Son degisim kayitlarina gore anlik hareket.</p>
+            <h1 id="chartTitle">Genel Aktivite</h1>
+            <p id="chartSubtitle">Tum taglerdeki son degisim ozeti.</p>
           </div>
           <span id="recentChangeCount">-</span>
         </div>
-        <canvas id="trendChart" height="260"></canvas>
+        <div class="activity-summary" id="activitySummary">
+          <article>
+            <span>Son Degisen Tag</span>
+            <strong id="latestChangedTag">-</strong>
+          </article>
+          <article>
+            <span>En Hareketli Tag</span>
+            <strong id="mostChangedTag">-</strong>
+          </article>
+          <article>
+            <span>Son Degisim</span>
+            <strong id="latestChangeTime">-</strong>
+          </article>
+        </div>
+        <canvas id="trendChart" class="is-hidden" height="260"></canvas>
       </section>
 
       <section class="content-grid">

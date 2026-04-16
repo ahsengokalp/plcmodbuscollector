@@ -2,6 +2,7 @@
   currentValues: [],
   recentChanges: [],
   trend: [],
+  topChangedTags: [],
   selectedAddress: "all",
 };
 
@@ -14,6 +15,12 @@ const elements = {
   connectionState: document.getElementById("connectionState"),
   generatedAt: document.getElementById("generatedAt"),
   tagSelect: document.getElementById("tagSelect"),
+  chartTitle: document.getElementById("chartTitle"),
+  chartSubtitle: document.getElementById("chartSubtitle"),
+  activitySummary: document.getElementById("activitySummary"),
+  latestChangedTag: document.getElementById("latestChangedTag"),
+  mostChangedTag: document.getElementById("mostChangedTag"),
+  latestChangeTime: document.getElementById("latestChangeTime"),
   tagList: document.getElementById("tagList"),
   changesTable: document.getElementById("changesTable"),
   trendChart: document.getElementById("trendChart"),
@@ -83,8 +90,6 @@ function drawEmptyChart(message) {
 }
 
 function trendForSelection() {
-  if (state.selectedAddress === "all") return state.trend;
-
   return selectedChanges()
     .slice(0, 30)
     .reverse()
@@ -93,6 +98,43 @@ function trendForSelection() {
       value: item.new_value,
       tag_name: item.tag_name,
     }));
+}
+
+function selectedTagName() {
+  const selected = state.currentValues.find(
+    (item) => String(item.modbus_address) === state.selectedAddress
+  );
+  return selected ? selected.tag_name : "-";
+}
+
+function renderActivitySummary() {
+  const latestChange = state.recentChanges[0];
+  const mostChanged = state.topChangedTags[0];
+
+  elements.latestChangedTag.textContent = latestChange
+    ? `${latestChange.modbus_address} - ${latestChange.tag_name}`
+    : "-";
+  elements.mostChangedTag.textContent = mostChanged
+    ? `${mostChanged.tag_name} (${mostChanged.change_count})`
+    : "-";
+  elements.latestChangeTime.textContent = latestChange ? latestChange.changed_at : "-";
+}
+
+function renderChartPanel() {
+  const isAllTags = state.selectedAddress === "all";
+  elements.activitySummary.classList.toggle("is-hidden", !isAllTags);
+  elements.trendChart.classList.toggle("is-hidden", isAllTags);
+
+  if (isAllTags) {
+    elements.chartTitle.textContent = "Genel Aktivite";
+    elements.chartSubtitle.textContent = "Tum taglerdeki son degisim ozeti.";
+    renderActivitySummary();
+    return;
+  }
+
+  elements.chartTitle.textContent = "Canli Deger Trendi";
+  elements.chartSubtitle.textContent = selectedTagName();
+  drawTrendChart();
 }
 
 function drawTrendChart() {
@@ -254,12 +296,13 @@ function renderDashboard(payload) {
   state.currentValues = payload.current_values;
   state.recentChanges = payload.recent_changes;
   state.trend = payload.charts.trend;
+  state.topChangedTags = payload.charts.top_changed_tags;
 
   populateTagSelect();
   renderMetrics(payload);
   renderTagList();
   renderChangesTable();
-  drawTrendChart();
+  renderChartPanel();
 }
 
 async function loadDashboard() {
@@ -282,10 +325,12 @@ elements.tagSelect.addEventListener("change", () => {
   state.selectedAddress = elements.tagSelect.value;
   renderTagList();
   renderChangesTable();
-  drawTrendChart();
+  renderChartPanel();
 });
 elements.refreshButton.addEventListener("click", loadDashboard);
-window.addEventListener("resize", drawTrendChart);
+window.addEventListener("resize", () => {
+  if (state.selectedAddress !== "all") drawTrendChart();
+});
 
 loadDashboard();
 setInterval(loadDashboard, 5000);

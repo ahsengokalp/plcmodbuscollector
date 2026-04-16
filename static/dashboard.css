@@ -199,6 +199,41 @@ body {
   padding: 16px;
 }
 
+.chart-panel canvas.is-hidden,
+.activity-summary.is-hidden {
+  display: none;
+}
+
+.activity-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  padding: 16px;
+}
+
+.activity-summary article {
+  min-height: 118px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  background: #f8fafc;
+}
+
+.activity-summary span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.activity-summary strong {
+  margin-top: 8px;
+  color: #101828;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
 .content-grid {
   display: grid;
   grid-template-columns: minmax(330px, 0.78fr) minmax(0, 1.22fr);
@@ -335,7 +370,8 @@ td {
 
 @media (max-width: 980px) {
   .status-grid,
-  .content-grid {
+  .content-grid,
+  .activity-summary {
     grid-template-columns: 1fr;
   }
 
