@@ -56,9 +56,18 @@
           <div class="panel-title compact">
             <div>
               <h2>Anlik Degerler</h2>
-              <p>PLC register listesi</p>
+              <p>PLC register ve degisim filtresi</p>
             </div>
-            <input id="tagFilter" type="search" placeholder="Tag veya adres ara">
+            <div class="filter-bar">
+              <input id="tagFilter" type="search" placeholder="Tag veya adres ara">
+              <div class="filter-tabs" aria-label="Hizli filtreler">
+                <button type="button" class="is-active" data-filter="all">Tumu</button>
+                <button type="button" data-filter="f1">Firin 1</button>
+                <button type="button" data-filter="f2">Firin 2</button>
+                <button type="button" data-filter="isi">Isi</button>
+                <button type="button" data-filter="critical">Kritik</button>
+              </div>
+            </div>
           </div>
           <div class="tag-list" id="tagList" aria-live="polite"></div>
         </section>

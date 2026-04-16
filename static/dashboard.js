@@ -2,6 +2,7 @@
   currentValues: [],
   recentChanges: [],
   trend: [],
+  quickFilter: "all",
 };
 
 const elements = {
@@ -14,6 +15,7 @@ const elements = {
   generatedAt: document.getElementById("generatedAt"),
   tagList: document.getElementById("tagList"),
   tagFilter: document.getElementById("tagFilter"),
+  filterButtons: document.querySelectorAll("[data-filter]"),
   changesTable: document.getElementById("changesTable"),
   trendChart: document.getElementById("trendChart"),
   errorToast: document.getElementById("errorToast"),
@@ -46,6 +48,37 @@ function pillClass(status) {
   if (status === "critical") return "critical-pill";
   if (status === "warning") return "warning-pill";
   return "ok-pill";
+}
+
+function itemMatchesText(item) {
+  const filter = elements.tagFilter.value.trim().toLocaleLowerCase("tr-TR");
+  if (!filter) return true;
+
+  const haystack = `${item.tag_name} ${item.modbus_address}`.toLocaleLowerCase("tr-TR");
+  return haystack.includes(filter);
+}
+
+function itemMatchesQuickFilter(item) {
+  const tagName = item.tag_name.toLocaleUpperCase("tr-TR");
+
+  if (state.quickFilter === "f1") return tagName.includes("F_1");
+  if (state.quickFilter === "f2") return tagName.includes("F_2");
+  if (state.quickFilter === "isi") return tagName.includes("ISI");
+  if (state.quickFilter === "critical") return item.status === "critical";
+  return true;
+}
+
+function itemMatchesFilters(item) {
+  return itemMatchesText(item) && itemMatchesQuickFilter(item);
+}
+
+function setQuickFilter(filter) {
+  state.quickFilter = filter;
+  elements.filterButtons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.filter === filter);
+  });
+  renderTagList();
+  renderChangesTable();
 }
 
 function setupCanvas(canvas) {
@@ -151,11 +184,7 @@ function renderMetrics(payload) {
 }
 
 function renderTagList() {
-  const filter = elements.tagFilter.value.trim().toLocaleLowerCase("tr-TR");
-  const values = state.currentValues.filter((item) => {
-    const haystack = `${item.tag_name} ${item.modbus_address}`.toLocaleLowerCase("tr-TR");
-    return haystack.includes(filter);
-  });
+  const values = state.currentValues.filter(itemMatchesFilters);
 
   if (values.length === 0) {
     elements.tagList.innerHTML = '<div class="empty-state">Kayit bulunamadi.</div>';
@@ -178,16 +207,21 @@ function renderTagList() {
 }
 
 function renderChangesTable() {
-  if (state.recentChanges.length === 0) {
+  const changes = state.recentChanges.filter(itemMatchesFilters);
+  const total = state.recentChanges.length;
+  const suffix = changes.length === total ? `${total} kayit` : `${changes.length}/${total} kayit`;
+  setText("recentChangeCount", suffix);
+
+  if (changes.length === 0) {
     elements.changesTable.innerHTML = `
       <tr>
-        <td colspan="6" class="empty-state">Henuz degisim kaydi yok.</td>
+        <td colspan="6" class="empty-state">Bu filtreye uygun degisim yok.</td>
       </tr>
     `;
     return;
   }
 
-  elements.changesTable.innerHTML = state.recentChanges
+  elements.changesTable.innerHTML = changes
     .map((item) => {
       const deltaClass = item.delta >= 0 ? "delta-up" : "delta-down";
       const delta = item.delta >= 0 ? `+${item.delta}` : item.delta;
@@ -228,7 +262,13 @@ async function loadDashboard() {
   }
 }
 
-elements.tagFilter.addEventListener("input", renderTagList);
+elements.tagFilter.addEventListener("input", () => {
+  renderTagList();
+  renderChangesTable();
+});
+elements.filterButtons.forEach((button) => {
+  button.addEventListener("click", () => setQuickFilter(button.dataset.filter));
+});
 elements.refreshButton.addEventListener("click", loadDashboard);
 window.addEventListener("resize", drawTrendChart);
 
