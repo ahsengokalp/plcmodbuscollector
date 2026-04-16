@@ -4,13 +4,25 @@ PLC register degerlerini Modbus TCP ile okuyup PostgreSQL'e yazar ve Flask taban
 
 ## Calistirma
 
-Collector servisi:
+Collector ve dashboard birlikte:
+
+```powershell
+python main.py
+```
+
+veya acik sekilde:
+
+```powershell
+python main.py all
+```
+
+Sadece collector servisi:
 
 ```powershell
 python main.py collector
 ```
 
-Dashboard:
+Sadece dashboard:
 
 ```powershell
 python main.py dashboard
@@ -19,7 +31,7 @@ python main.py dashboard
 Arayuz varsayilan olarak su adreste acilir:
 
 ```text
-http://127.0.0.1:5000
+http://127.0.0.1:5059
 ```
 
 ## Dosya Yapisi
