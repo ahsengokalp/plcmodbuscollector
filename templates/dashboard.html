@@ -4,12 +4,13 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Dikkan PLC Dashboard</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/logod.png', v=asset_version) }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css', v=asset_version) }}">
   </head>
   <body>
     <header class="topbar">
       <div class="brand">
-        <strong>Dikkan</strong>
+        <img src="{{ url_for('static', filename='images/logo.png', v=asset_version) }}" alt="Dikkan">
         <span>PLC Dashboard</span>
       </div>
       <div class="toolbar">

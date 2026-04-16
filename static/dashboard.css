@@ -36,14 +36,16 @@ body {
 
 .brand {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 18px;
   min-width: 0;
 }
 
-.brand strong {
-  font-size: 28px;
-  line-height: 1;
+.brand img {
+  width: auto;
+  height: 31px;
+  display: block;
+  object-fit: contain;
 }
 
 .brand span {
