@@ -1,6 +1,8 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from flask import Flask, jsonify, render_template, request
+
+TZ_TR = timezone(timedelta(hours=3))
 
 from config import (
     CRITICAL_VALUE_THRESHOLD,
@@ -288,7 +290,7 @@ def build_furnace_payload(furnace_id):
     cikis = current_values.get(FURNACE_FIELDS["cikis_biyet_no"], {}).get("value", 0)
 
     return {
-        "generated_at": format_datetime(datetime.now()),
+        "generated_at": format_datetime(datetime.now(TZ_TR)),
         "furnace": {
             "id": furnace_id,
             "title": furnace["title"],
@@ -340,7 +342,7 @@ def build_history_payload(limit):
                 }
 
     return {
-        "generated_at": format_datetime(datetime.now()),
+        "generated_at": format_datetime(datetime.now(TZ_TR)),
         "limit": limit,
         "histories": histories,
     }
@@ -369,7 +371,7 @@ def build_thermal_dashboard_payload(limit):
                 }
 
     return {
-        "generated_at": format_datetime(datetime.now()),
+        "generated_at": format_datetime(datetime.now(TZ_TR)),
         "limit": limit,
         "y_axis": {
             "min": 0,
@@ -486,11 +488,11 @@ def build_dashboard_payload():
     critical_count = sum(1 for item in current_values if item["status"] == "critical")
     warning_count = sum(1 for item in current_values if item["status"] == "warning")
     ok_count = sum(1 for item in current_values if item["status"] == "ok")
-    stale_limit = datetime.now() - timedelta(minutes=DASHBOARD_STALE_MINUTES)
+    stale_limit = datetime.now(TZ_TR) - timedelta(minutes=DASHBOARD_STALE_MINUTES)
     is_online = last_update is not None and last_update >= stale_limit
 
     return {
-        "generated_at": format_datetime(datetime.now()),
+        "generated_at": format_datetime(datetime.now(TZ_TR)),
         "stats": {
             "total_tags": len(current_values),
             "ok_count": ok_count,
@@ -531,7 +533,7 @@ def health_label(state):
 
 
 def build_health_payload():
-    now = datetime.now()
+    now = datetime.now(TZ_TR)
 
     with get_db_connection() as conn:
         with conn.cursor() as cur:
@@ -587,7 +589,7 @@ def build_health_payload():
 def build_health_error_payload(error):
     message = f"Veritabani veya uygulama verisi okunamadi: {error}"
     return {
-        "generated_at": format_datetime(datetime.now()),
+        "generated_at": format_datetime(datetime.now(TZ_TR)),
         "overall": {
             "state": "critical",
             "label": health_label("critical"),
@@ -613,7 +615,7 @@ def build_health_error_payload(error):
 def dashboard_page():
     return render_template(
         "dashboard.html",
-        asset_version=datetime.now().strftime("%Y%m%d%H%M%S"),
+        asset_version=datetime.now(TZ_TR).strftime("%Y%m%d%H%M%S"),
     )
 
 
@@ -621,7 +623,7 @@ def dashboard_page():
 def thermal_dashboard_page():
     return render_template(
         "thermal_dashboard.html",
-        asset_version=datetime.now().strftime("%Y%m%d%H%M%S"),
+        asset_version=datetime.now(TZ_TR).strftime("%Y%m%d%H%M%S"),
     )
 
 
@@ -631,7 +633,7 @@ def furnace_one_page():
         "furnace.html",
         furnace_id="f1",
         furnace_title="F_1",
-        asset_version=datetime.now().strftime("%Y%m%d%H%M%S"),
+        asset_version=datetime.now(TZ_TR).strftime("%Y%m%d%H%M%S"),
     )
 
 
@@ -641,7 +643,7 @@ def furnace_two_page():
         "furnace.html",
         furnace_id="f2",
         furnace_title="F_2",
-        asset_version=datetime.now().strftime("%Y%m%d%H%M%S"),
+        asset_version=datetime.now(TZ_TR).strftime("%Y%m%d%H%M%S"),
     )
 
 
@@ -649,7 +651,7 @@ def furnace_two_page():
 def history_page():
     return render_template(
         "history.html",
-        asset_version=datetime.now().strftime("%Y%m%d%H%M%S"),
+        asset_version=datetime.now(TZ_TR).strftime("%Y%m%d%H%M%S"),
     )
 
 
@@ -657,7 +659,7 @@ def history_page():
 def health_page():
     return render_template(
         "health.html",
-        asset_version=datetime.now().strftime("%Y%m%d%H%M%S"),
+        asset_version=datetime.now(TZ_TR).strftime("%Y%m%d%H%M%S"),
     )
 
 
@@ -671,7 +673,7 @@ def dashboard_api():
                 {
                     "error": "Dashboard verisi alinamadi",
                     "detail": str(exc),
-                    "generated_at": format_datetime(datetime.now()),
+                    "generated_at": format_datetime(datetime.now(TZ_TR)),
                 }
             ),
             500,
@@ -696,7 +698,7 @@ def thermal_dashboard_api():
                 {
                     "error": "Dashboard trend verisi alinamadi",
                     "detail": str(exc),
-                    "generated_at": format_datetime(datetime.now()),
+                    "generated_at": format_datetime(datetime.now(TZ_TR)),
                 }
             ),
             500,
@@ -717,7 +719,7 @@ def furnace_api(furnace_id):
                 {
                     "error": "Firin verisi alinamadi",
                     "detail": str(exc),
-                    "generated_at": format_datetime(datetime.now()),
+                    "generated_at": format_datetime(datetime.now(TZ_TR)),
                 }
             ),
             500,
@@ -734,7 +736,7 @@ def history_api():
                 {
                     "error": "Veri gecmisi alinamadi",
                     "detail": str(exc),
-                    "generated_at": format_datetime(datetime.now()),
+                    "generated_at": format_datetime(datetime.now(TZ_TR)),
                 }
             ),
             500,

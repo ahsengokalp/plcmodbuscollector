@@ -1,5 +1,7 @@
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import time
+
+TZ_TR = timezone(timedelta(hours=3))
 
 from pymodbus.client import ModbusTcpClient
 
@@ -103,7 +105,7 @@ def insert_initial_current_values(data):
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        upsert_current_values(cur, data, datetime.now())
+        upsert_current_values(cur, data, datetime.now(TZ_TR))
         conn.commit()
         print(f"Initial current load completed: {len(data)} records")
 
@@ -135,7 +137,7 @@ def process_changes(data, current_values):
             VALUES (%s, %s, %s, %s, %s)
         """
 
-        now = datetime.now()
+        now = datetime.now(TZ_TR)
 
         for modbus_address, tag_name, new_value in data:
             old_value = current_values.get(modbus_address)
