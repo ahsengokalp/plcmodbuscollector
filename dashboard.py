@@ -270,8 +270,11 @@ def newest_furnace_update(current_values):
     newest = None
     for item in current_values.values():
         updated_at = item["updated_at"]
-        if updated_at is not None and (newest is None or updated_at > newest):
-            newest = updated_at
+        if updated_at is not None:
+            if updated_at.tzinfo is None:
+                updated_at = updated_at.replace(tzinfo=TZ_TR)
+            if newest is None or updated_at > newest:
+                newest = updated_at
     return newest
 
 
@@ -470,6 +473,7 @@ def newest_update(current_values):
             continue
 
         parsed = datetime.strptime(item["updated_at"], "%d.%m.%Y %H:%M:%S")
+        parsed = parsed.replace(tzinfo=TZ_TR)
         if last_update is None or parsed > last_update:
             last_update = parsed
 
