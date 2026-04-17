@@ -560,7 +560,8 @@ td {
 }
 
 .trend-shell {
-  max-width: 1500px;
+  max-width: 1680px;
+  padding: 14px;
 }
 
 .trend-status-grid {
@@ -572,13 +573,17 @@ td {
 }
 
 .trend-panel {
-  min-height: calc(100vh - 174px);
+  min-height: calc(100vh - 154px);
 }
 
 .trend-panel canvas {
-  min-height: 460px;
+  min-height: 620px;
   padding: 0;
   background: #fbfcff;
+}
+
+.trend-panel .panel-title {
+  align-items: flex-start;
 }
 
 .trend-legend {
@@ -612,6 +617,50 @@ td {
 
 .legend-orange {
   background: #f97316;
+}
+
+.trend-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.trend-controls button,
+.trend-controls span {
+  height: 32px;
+  min-width: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #fff;
+  color: #344054;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.trend-controls button {
+  cursor: pointer;
+}
+
+.trend-controls button:hover:not(:disabled) {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.trend-controls button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.trend-controls span {
+  min-width: 54px;
+  background: #eef4ff;
+  color: var(--blue);
 }
 
 @media (max-width: 980px) {
@@ -656,7 +705,19 @@ td {
   }
 
   .trend-panel canvas {
-    min-height: 380px;
+    min-height: 460px;
+  }
+}
+
+@media (max-width: 760px) {
+  .trend-panel .panel-title {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .trend-legend,
+  .trend-controls {
+    justify-content: flex-start;
   }
 }
 

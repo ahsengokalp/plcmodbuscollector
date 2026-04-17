@@ -9,10 +9,20 @@ const elements = {
   f2LatestTime: document.getElementById("f2LatestTime"),
   chartSubtitle: document.getElementById("chartSubtitle"),
   chart: document.getElementById("thermalTrendChart"),
+  zoomOutButton: document.getElementById("zoomOutButton"),
+  zoomInButton: document.getElementById("zoomInButton"),
+  resetZoomButton: document.getElementById("resetZoomButton"),
+  zoomLevel: document.getElementById("zoomLevel"),
+  downloadChartButton: document.getElementById("downloadChartButton"),
   errorToast: document.getElementById("errorToast"),
 };
 
 let lastPayload = null;
+let zoomLevel = 1;
+
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 4;
+const ZOOM_STEP = 0.5;
 
 function showError(message) {
   elements.errorToast.textContent = message;
@@ -26,7 +36,8 @@ function hideError() {
 function setupCanvas(canvas) {
   const rect = canvas.getBoundingClientRect();
   const scale = window.devicePixelRatio || 1;
-  const cssHeight = Number(canvas.getAttribute("height")) || 460;
+  const baseHeight = Number(canvas.dataset.baseHeight) || Number(canvas.getAttribute("height")) || 620;
+  const cssHeight = Math.round(baseHeight * Math.min(zoomLevel, 2.2));
   canvas.style.height = `${cssHeight}px`;
   canvas.width = Math.max(1, Math.floor(rect.width * scale));
   canvas.height = Math.max(1, Math.floor(cssHeight * scale));
@@ -39,6 +50,40 @@ function combinedPoints(series) {
   return [...series.f1.points, ...series.f2.points].sort((a, b) =>
     a.sort_key.localeCompare(b.sort_key)
   );
+}
+
+function zoomedPoints(points) {
+  if (zoomLevel <= 1 || points.length <= 2) return points;
+
+  const visibleCount = Math.max(2, Math.ceil(points.length / zoomLevel));
+  return points.slice(-visibleCount);
+}
+
+function zoomedPayload(payload) {
+  const f1Points = zoomedPoints(payload.series.f1.points);
+  const f2Points = zoomedPoints(payload.series.f2.points);
+  const visibleValues = [...f1Points, ...f2Points].map((point) => point.value);
+  const minValue = visibleValues.length ? Math.min(...visibleValues) : payload.y_axis.min;
+  const maxValue = visibleValues.length ? Math.max(...visibleValues) : payload.y_axis.max;
+  const padding = Math.max(25, Math.round((maxValue - minValue) * 0.16));
+  const yMin = zoomLevel > 1 ? Math.max(0, Math.floor((minValue - padding) / 25) * 25) : payload.y_axis.min;
+  const yMax = zoomLevel > 1
+    ? Math.max(yMin + 125, Math.ceil((maxValue + padding) / 25) * 25)
+    : payload.y_axis.max;
+
+  return {
+    ...payload,
+    y_axis: {
+      ...payload.y_axis,
+      min: yMin,
+      max: yMax,
+      step: zoomLevel > 1 ? Math.max(25, Math.ceil((yMax - yMin) / 8 / 25) * 25) : payload.y_axis.step,
+    },
+    series: {
+      f1: { ...payload.series.f1, points: f1Points },
+      f2: { ...payload.series.f2, points: f2Points },
+    },
+  };
 }
 
 function drawEmptyChart(message) {
@@ -76,7 +121,8 @@ function drawStepLine(ctx, coords, color) {
 }
 
 function drawTrendChart(payload) {
-  const allPoints = combinedPoints(payload.series);
+  const chartPayload = zoomedPayload(payload);
+  const allPoints = combinedPoints(chartPayload.series);
 
   if (allPoints.length < 2) {
     drawEmptyChart("Trend cizimi icin yeterli veri yok.");
@@ -87,8 +133,8 @@ function drawTrendChart(payload) {
   const pad = { left: 72, right: 30, top: 26, bottom: 76 };
   const chartWidth = width - pad.left - pad.right;
   const chartHeight = height - pad.top - pad.bottom;
-  const minValue = payload.y_axis.min;
-  const maxValue = payload.y_axis.max;
+  const minValue = chartPayload.y_axis.min;
+  const maxValue = chartPayload.y_axis.max;
   const range = Math.max(1, maxValue - minValue);
 
   ctx.clearRect(0, 0, width, height);
@@ -102,7 +148,7 @@ function drawTrendChart(payload) {
   ctx.textAlign = "right";
   ctx.textBaseline = "middle";
 
-  for (let value = minValue; value <= maxValue; value += payload.y_axis.step) {
+  for (let value = minValue; value <= maxValue; value += chartPayload.y_axis.step) {
     const y = pad.top + chartHeight - ((value - minValue) / range) * chartHeight;
     ctx.beginPath();
     ctx.moveTo(pad.left, y);
@@ -119,7 +165,7 @@ function drawTrendChart(payload) {
   ctx.lineTo(width - pad.right, height - pad.bottom);
   ctx.stroke();
 
-  const seriesList = [payload.series.f1, payload.series.f2];
+  const seriesList = [chartPayload.series.f1, chartPayload.series.f2];
   seriesList.forEach((item) => {
     const coords = item.points.map((point, index) => ({
       x: pointX(index, item.points.length, pad, chartWidth),
@@ -147,6 +193,12 @@ function drawTrendChart(payload) {
   });
 }
 
+function updateZoomControls() {
+  elements.zoomLevel.textContent = `${Math.round(zoomLevel * 100)}%`;
+  elements.zoomOutButton.disabled = zoomLevel <= MIN_ZOOM;
+  elements.zoomInButton.disabled = zoomLevel >= MAX_ZOOM;
+}
+
 function renderDashboard(payload) {
   lastPayload = payload;
 
@@ -160,6 +212,7 @@ function renderDashboard(payload) {
   elements.chartSubtitle.textContent = `${payload.series.f1.tag_name} / ${payload.series.f2.tag_name}`;
 
   drawTrendChart(payload);
+  updateZoomControls();
 }
 
 async function loadDashboard() {
@@ -179,11 +232,35 @@ async function loadDashboard() {
   }
 }
 
+function setZoom(nextZoom) {
+  zoomLevel = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, nextZoom));
+  updateZoomControls();
+
+  if (lastPayload) {
+    drawTrendChart(lastPayload);
+  }
+}
+
+function downloadChart() {
+  if (!lastPayload) return;
+
+  const link = document.createElement("a");
+  const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+  link.download = `firin-trend-dashboard-${timestamp}.png`;
+  link.href = elements.chart.toDataURL("image/png");
+  link.click();
+}
+
 elements.refreshButton.addEventListener("click", loadDashboard);
 elements.limitSelect.addEventListener("change", loadDashboard);
+elements.zoomOutButton.addEventListener("click", () => setZoom(zoomLevel - ZOOM_STEP));
+elements.zoomInButton.addEventListener("click", () => setZoom(zoomLevel + ZOOM_STEP));
+elements.resetZoomButton.addEventListener("click", () => setZoom(1));
+elements.downloadChartButton.addEventListener("click", downloadChart);
 window.addEventListener("resize", () => {
   if (lastPayload) drawTrendChart(lastPayload);
 });
 
+updateZoomControls();
 loadDashboard();
 setInterval(loadDashboard, 5000);
