@@ -26,5 +26,5 @@ services:
       WARN_VALUE_THRESHOLD: ${WARN_VALUE_THRESHOLD:-500}
       CRITICAL_VALUE_THRESHOLD: ${CRITICAL_VALUE_THRESHOLD:-1000}
     ports:
-      - "5059:5059"
+      - "5959:5059"
     restart: always
