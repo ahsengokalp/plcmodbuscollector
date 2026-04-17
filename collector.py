@@ -96,6 +96,35 @@ def upsert_current_values(cur, data, now):
         cur.execute(query, (modbus_address, tag_name, raw_value, now))
 
 
+def seed_missing_history(cur, data, current_values, now):
+    query = """
+        INSERT INTO plc_readings_history (
+            modbus_address, tag_name, old_value, new_value, changed_at
+        )
+        SELECT %s, %s, NULL, %s, %s
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM plc_readings_history
+            WHERE modbus_address = %s
+              AND tag_name = %s
+        )
+    """
+
+    for modbus_address, tag_name, raw_value in data:
+        baseline_value = current_values.get(modbus_address, raw_value)
+        cur.execute(
+            query,
+            (
+                modbus_address,
+                tag_name,
+                baseline_value,
+                now,
+                modbus_address,
+                tag_name,
+            ),
+        )
+
+
 def insert_initial_current_values(data):
     conn = None
     cur = None
@@ -103,7 +132,9 @@ def insert_initial_current_values(data):
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        upsert_current_values(cur, data, db_now())
+        now = db_now()
+        upsert_current_values(cur, data, now)
+        seed_missing_history(cur, data, {}, now)
         conn.commit()
         print(f"Initial current load completed: {len(data)} records")
 
@@ -136,6 +167,7 @@ def process_changes(data, current_values):
         """
 
         now = db_now()
+        seed_missing_history(cur, data, current_values, now)
 
         for modbus_address, tag_name, new_value in data:
             old_value = current_values.get(modbus_address)
