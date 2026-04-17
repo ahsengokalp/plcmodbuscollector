@@ -12,17 +12,21 @@ const elements = {
   zoomOutButton: document.getElementById("zoomOutButton"),
   zoomInButton: document.getElementById("zoomInButton"),
   resetZoomButton: document.getElementById("resetZoomButton"),
-  zoomLevel: document.getElementById("zoomLevel"),
   downloadChartButton: document.getElementById("downloadChartButton"),
   errorToast: document.getElementById("errorToast"),
 };
 
 let lastPayload = null;
-let zoomLevel = 1;
+let fullDomain = null;
+let viewDomain = null;
+let isPanning = false;
+let panStartX = 0;
+let panStartDomain = null;
+let followLatest = true;
 
-const MIN_ZOOM = 1;
-const MAX_ZOOM = 4;
-const ZOOM_STEP = 0.5;
+const CHART_PAD = { left: 72, right: 30, top: 26, bottom: 76 };
+const INITIAL_WINDOW_MS = 4 * 60 * 1000;
+const ONE_MINUTE_MS = 60 * 1000;
 
 function showError(message) {
   elements.errorToast.textContent = message;
@@ -36,8 +40,7 @@ function hideError() {
 function setupCanvas(canvas) {
   const rect = canvas.getBoundingClientRect();
   const scale = window.devicePixelRatio || 1;
-  const baseHeight = Number(canvas.dataset.baseHeight) || Number(canvas.getAttribute("height")) || 620;
-  const cssHeight = Math.round(baseHeight * Math.min(zoomLevel, 2.2));
+  const cssHeight = Number(canvas.getAttribute("height")) || 620;
   canvas.style.height = `${cssHeight}px`;
   canvas.width = Math.max(1, Math.floor(rect.width * scale));
   canvas.height = Math.max(1, Math.floor(cssHeight * scale));
@@ -52,38 +55,105 @@ function combinedPoints(series) {
   );
 }
 
-function zoomedPoints(points) {
-  if (zoomLevel <= 1 || points.length <= 2) return points;
-
-  const visibleCount = Math.max(2, Math.ceil(points.length / zoomLevel));
-  return points.slice(-visibleCount);
+function pointTime(point) {
+  return Date.parse(point.sort_key);
 }
 
-function zoomedPayload(payload) {
-  const f1Points = zoomedPoints(payload.series.f1.points);
-  const f2Points = zoomedPoints(payload.series.f2.points);
-  const visibleValues = [...f1Points, ...f2Points].map((point) => point.value);
-  const minValue = visibleValues.length ? Math.min(...visibleValues) : payload.y_axis.min;
-  const maxValue = visibleValues.length ? Math.max(...visibleValues) : payload.y_axis.max;
-  const padding = Math.max(25, Math.round((maxValue - minValue) * 0.16));
-  const yMin = zoomLevel > 1 ? Math.max(0, Math.floor((minValue - padding) / 25) * 25) : payload.y_axis.min;
-  const yMax = zoomLevel > 1
-    ? Math.max(yMin + 125, Math.ceil((maxValue + padding) / 25) * 25)
-    : payload.y_axis.max;
+function domainForPayload(payload) {
+  const times = combinedPoints(payload.series)
+    .map(pointTime)
+    .filter((time) => Number.isFinite(time));
+
+  if (times.length < 2) return null;
 
   return {
-    ...payload,
-    y_axis: {
-      ...payload.y_axis,
-      min: yMin,
-      max: yMax,
-      step: zoomLevel > 1 ? Math.max(25, Math.ceil((yMax - yMin) / 8 / 25) * 25) : payload.y_axis.step,
-    },
-    series: {
-      f1: { ...payload.series.f1, points: f1Points },
-      f2: { ...payload.series.f2, points: f2Points },
-    },
+    min: Math.min(...times),
+    max: Math.max(...times),
   };
+}
+
+function clampDomain(domain, bounds) {
+  const fullSpan = bounds.max - bounds.min;
+  const span = Math.min(domain.max - domain.min, fullSpan);
+
+  if (span >= fullSpan) {
+    return { ...bounds };
+  }
+
+  let min = domain.min;
+  let max = domain.min + span;
+
+  if (min < bounds.min) {
+    min = bounds.min;
+    max = min + span;
+  }
+
+  if (max > bounds.max) {
+    max = bounds.max;
+    min = max - span;
+  }
+
+  return { min, max };
+}
+
+function initialViewDomain(bounds) {
+  const fullSpan = bounds.max - bounds.min;
+
+  if (fullSpan <= INITIAL_WINDOW_MS) {
+    return { ...bounds };
+  }
+
+  return {
+    min: bounds.max - INITIAL_WINDOW_MS,
+    max: bounds.max,
+  };
+}
+
+function ensureViewDomain(payload) {
+  const nextFullDomain = domainForPayload(payload);
+  if (!nextFullDomain) {
+    fullDomain = null;
+    viewDomain = null;
+    return;
+  }
+
+  fullDomain = nextFullDomain;
+  viewDomain = viewDomain && !followLatest
+    ? clampDomain(viewDomain, fullDomain)
+    : initialViewDomain(fullDomain);
+}
+
+function resetZoom() {
+  if (!fullDomain) return;
+  followLatest = true;
+  viewDomain = initialViewDomain(fullDomain);
+  if (lastPayload) drawTrendChart(lastPayload);
+}
+
+function drawablePoints(points, domain) {
+  const sorted = [...points].sort((a, b) => pointTime(a) - pointTime(b));
+  const visible = [];
+  let previous = null;
+
+  sorted.forEach((point) => {
+    const time = pointTime(point);
+    if (!Number.isFinite(time)) return;
+
+    if (time < domain.min) {
+      previous = point;
+      return;
+    }
+
+    if (time <= domain.max) {
+      if (previous) {
+        visible.push(previous);
+        previous = null;
+      }
+      visible.push(point);
+    }
+  });
+
+  return visible;
 }
 
 function drawEmptyChart(message) {
@@ -95,9 +165,55 @@ function drawEmptyChart(message) {
   ctx.fillText(message, width / 2, height / 2);
 }
 
-function pointX(index, count, pad, chartWidth) {
-  if (count <= 1) return pad.left;
-  return pad.left + (chartWidth / (count - 1)) * index;
+function timeToX(time, domain, pad, chartWidth) {
+  const span = Math.max(1, domain.max - domain.min);
+  return pad.left + ((time - domain.min) / span) * chartWidth;
+}
+
+function formatChartDate(time) {
+  const date = new Date(time);
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}.${month}.${year}`;
+}
+
+function formatChartTime(time) {
+  const date = new Date(time);
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  const second = String(date.getSeconds()).padStart(2, "0");
+  return `${hour}:${minute}:${second}`;
+}
+
+function tickIntervalForDomain(domain) {
+  const span = domain.max - domain.min;
+
+  if (span <= 6 * ONE_MINUTE_MS) return ONE_MINUTE_MS;
+  if (span <= 15 * ONE_MINUTE_MS) return 2 * ONE_MINUTE_MS;
+  if (span <= 30 * ONE_MINUTE_MS) return 5 * ONE_MINUTE_MS;
+  if (span <= 60 * ONE_MINUTE_MS) return 10 * ONE_MINUTE_MS;
+  return 15 * ONE_MINUTE_MS;
+}
+
+function buildTimeTicks(domain) {
+  const interval = tickIntervalForDomain(domain);
+  const ticks = [];
+  const firstTick = Math.ceil(domain.min / interval) * interval;
+
+  for (let time = firstTick; time <= domain.max; time += interval) {
+    ticks.push(time);
+  }
+
+  if (ticks.length === 0 || ticks[0] - domain.min > interval * 0.35) {
+    ticks.unshift(domain.min);
+  }
+
+  if (domain.max - ticks[ticks.length - 1] > interval * 0.35) {
+    ticks.push(domain.max);
+  }
+
+  return ticks;
 }
 
 function drawStepLine(ctx, coords, color) {
@@ -121,20 +237,20 @@ function drawStepLine(ctx, coords, color) {
 }
 
 function drawTrendChart(payload) {
-  const chartPayload = zoomedPayload(payload);
-  const allPoints = combinedPoints(chartPayload.series);
+  ensureViewDomain(payload);
+  const allPoints = combinedPoints(payload.series);
 
-  if (allPoints.length < 2) {
+  if (allPoints.length < 2 || !viewDomain) {
     drawEmptyChart("Trend cizimi icin yeterli veri yok.");
     return;
   }
 
   const { ctx, width, height } = setupCanvas(elements.chart);
-  const pad = { left: 72, right: 30, top: 26, bottom: 76 };
+  const pad = CHART_PAD;
   const chartWidth = width - pad.left - pad.right;
   const chartHeight = height - pad.top - pad.bottom;
-  const minValue = chartPayload.y_axis.min;
-  const maxValue = chartPayload.y_axis.max;
+  const minValue = payload.y_axis.min;
+  const maxValue = payload.y_axis.max;
   const range = Math.max(1, maxValue - minValue);
 
   ctx.clearRect(0, 0, width, height);
@@ -148,7 +264,7 @@ function drawTrendChart(payload) {
   ctx.textAlign = "right";
   ctx.textBaseline = "middle";
 
-  for (let value = minValue; value <= maxValue; value += chartPayload.y_axis.step) {
+  for (let value = minValue; value <= maxValue; value += payload.y_axis.step) {
     const y = pad.top + chartHeight - ((value - minValue) / range) * chartHeight;
     ctx.beginPath();
     ctx.moveTo(pad.left, y);
@@ -165,38 +281,36 @@ function drawTrendChart(payload) {
   ctx.lineTo(width - pad.right, height - pad.bottom);
   ctx.stroke();
 
-  const seriesList = [chartPayload.series.f1, chartPayload.series.f2];
+  const seriesList = [payload.series.f1, payload.series.f2];
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(pad.left, pad.top, chartWidth, chartHeight);
+  ctx.clip();
+
   seriesList.forEach((item) => {
-    const coords = item.points.map((point, index) => ({
-      x: pointX(index, item.points.length, pad, chartWidth),
+    const coords = drawablePoints(item.points, viewDomain).map((point) => ({
+      x: timeToX(pointTime(point), viewDomain, pad, chartWidth),
       y: pad.top + chartHeight - ((point.value - minValue) / range) * chartHeight,
     }));
     drawStepLine(ctx, coords, item.color);
   });
-
-  const first = allPoints[0];
-  const middle = allPoints[Math.floor(allPoints.length / 2)];
-  const last = allPoints[allPoints.length - 1];
-  const tickPoints = [
-    { point: first, x: pad.left },
-    { point: middle, x: pad.left + chartWidth / 2 },
-    { point: last, x: width - pad.right },
-  ];
+  ctx.restore();
 
   ctx.fillStyle = "#344054";
   ctx.font = "13px Segoe UI, Arial";
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
-  tickPoints.forEach(({ point, x }) => {
-    ctx.fillText(point.time, x, height - pad.bottom + 16);
-    ctx.fillText(point.date, x, height - pad.bottom + 38);
+  buildTimeTicks(viewDomain).forEach((time) => {
+    const x = timeToX(time, viewDomain, pad, chartWidth);
+    ctx.strokeStyle = "#e4e7ec";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x, height - pad.bottom);
+    ctx.lineTo(x, height - pad.bottom + 8);
+    ctx.stroke();
+    ctx.fillText(formatChartTime(time), x, height - pad.bottom + 16);
+    ctx.fillText(formatChartDate(time), x, height - pad.bottom + 38);
   });
-}
-
-function updateZoomControls() {
-  elements.zoomLevel.textContent = `${Math.round(zoomLevel * 100)}%`;
-  elements.zoomOutButton.disabled = zoomLevel <= MIN_ZOOM;
-  elements.zoomInButton.disabled = zoomLevel >= MAX_ZOOM;
 }
 
 function renderDashboard(payload) {
@@ -212,7 +326,6 @@ function renderDashboard(payload) {
   elements.chartSubtitle.textContent = `${payload.series.f1.tag_name} / ${payload.series.f2.tag_name}`;
 
   drawTrendChart(payload);
-  updateZoomControls();
 }
 
 async function loadDashboard() {
@@ -232,13 +345,48 @@ async function loadDashboard() {
   }
 }
 
-function setZoom(nextZoom) {
-  zoomLevel = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, nextZoom));
-  updateZoomControls();
+function zoomAt(clientX, zoomFactor) {
+  if (!fullDomain || !viewDomain || !lastPayload) return;
 
-  if (lastPayload) {
-    drawTrendChart(lastPayload);
-  }
+  const rect = elements.chart.getBoundingClientRect();
+  const chartLeft = rect.left + CHART_PAD.left;
+  const chartWidth = rect.width - CHART_PAD.left - CHART_PAD.right;
+  const mouseRatio = Math.min(1, Math.max(0, (clientX - chartLeft) / chartWidth));
+  const currentSpan = viewDomain.max - viewDomain.min;
+  const fullSpan = fullDomain.max - fullDomain.min;
+  const minSpan = Math.max(60 * 1000, fullSpan / 80);
+  const nextSpan = Math.min(fullSpan, Math.max(minSpan, currentSpan * zoomFactor));
+  const anchorTime = viewDomain.min + currentSpan * mouseRatio;
+  const nextMin = anchorTime - nextSpan * mouseRatio;
+
+  followLatest = false;
+  viewDomain = clampDomain({ min: nextMin, max: nextMin + nextSpan }, fullDomain);
+  drawTrendChart(lastPayload);
+}
+
+function panTo(clientX) {
+  if (!fullDomain || !panStartDomain || !lastPayload) return;
+
+  const rect = elements.chart.getBoundingClientRect();
+  const chartWidth = rect.width - CHART_PAD.left - CHART_PAD.right;
+  const span = panStartDomain.max - panStartDomain.min;
+  const deltaPx = clientX - panStartX;
+  const deltaMs = -(deltaPx / chartWidth) * span;
+
+  followLatest = false;
+  viewDomain = clampDomain(
+    {
+      min: panStartDomain.min + deltaMs,
+      max: panStartDomain.max + deltaMs,
+    },
+    fullDomain
+  );
+  drawTrendChart(lastPayload);
+}
+
+function zoomFromCenter(zoomFactor) {
+  const rect = elements.chart.getBoundingClientRect();
+  zoomAt(rect.left + rect.width / 2, zoomFactor);
 }
 
 function downloadChart() {
@@ -252,15 +400,45 @@ function downloadChart() {
 }
 
 elements.refreshButton.addEventListener("click", loadDashboard);
-elements.limitSelect.addEventListener("change", loadDashboard);
-elements.zoomOutButton.addEventListener("click", () => setZoom(zoomLevel - ZOOM_STEP));
-elements.zoomInButton.addEventListener("click", () => setZoom(zoomLevel + ZOOM_STEP));
-elements.resetZoomButton.addEventListener("click", () => setZoom(1));
+elements.limitSelect.addEventListener("change", () => {
+  viewDomain = null;
+  followLatest = true;
+  loadDashboard();
+});
+elements.resetZoomButton.addEventListener("click", resetZoom);
+elements.zoomOutButton.addEventListener("click", () => zoomFromCenter(1.22));
+elements.zoomInButton.addEventListener("click", () => zoomFromCenter(0.82));
 elements.downloadChartButton.addEventListener("click", downloadChart);
+elements.chart.addEventListener("wheel", (event) => {
+  event.preventDefault();
+  zoomAt(event.clientX, event.deltaY < 0 ? 0.82 : 1.22);
+});
+elements.chart.addEventListener("pointerdown", (event) => {
+  if (!viewDomain || !fullDomain || event.button !== 0) return;
+  isPanning = true;
+  panStartX = event.clientX;
+  panStartDomain = { ...viewDomain };
+  elements.chart.classList.add("is-panning");
+  elements.chart.setPointerCapture(event.pointerId);
+});
+elements.chart.addEventListener("pointermove", (event) => {
+  if (!isPanning) return;
+  panTo(event.clientX);
+});
+elements.chart.addEventListener("pointerup", (event) => {
+  isPanning = false;
+  panStartDomain = null;
+  elements.chart.classList.remove("is-panning");
+  elements.chart.releasePointerCapture(event.pointerId);
+});
+elements.chart.addEventListener("pointercancel", () => {
+  isPanning = false;
+  panStartDomain = null;
+  elements.chart.classList.remove("is-panning");
+});
 window.addEventListener("resize", () => {
   if (lastPayload) drawTrendChart(lastPayload);
 });
 
-updateZoomControls();
 loadDashboard();
 setInterval(loadDashboard, 5000);

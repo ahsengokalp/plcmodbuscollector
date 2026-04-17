@@ -25,8 +25,8 @@
           <span>Trend</span>
           <select id="limitSelect">
             <option value="60">60 kayit</option>
-            <option value="120" selected>120 kayit</option>
-            <option value="240">240 kayit</option>
+            <option value="120">120 kayit</option>
+            <option value="240" selected>240 kayit</option>
           </select>
         </label>
         <span id="generatedAt">-</span>
@@ -53,7 +53,7 @@
         </article>
         <article class="status-card">
           <span>Kayit Araligi</span>
-          <strong id="sampleStep">120</strong>
+          <strong id="sampleStep">240</strong>
           <small>son kayit</small>
         </article>
       </section>
@@ -69,10 +69,13 @@
             <span><i class="legend-orange"></i>FIRIN_2 TURUNCU</span>
           </div>
           <div class="trend-controls" aria-label="Grafik kontrolleri">
-            <button id="zoomOutButton" type="button" title="Uzaklastir">-</button>
-            <span id="zoomLevel">100%</span>
-            <button id="zoomInButton" type="button" title="Yakinlastir">+</button>
-            <button id="resetZoomButton" type="button" title="Zoom sifirla">100</button>
+            <button id="zoomOutButton" class="icon-button" type="button" title="Uzaklastir" aria-label="Uzaklastir">
+              <span class="magnifier-icon minus" aria-hidden="true"></span>
+            </button>
+            <button id="zoomInButton" class="icon-button" type="button" title="Yakinlastir" aria-label="Yakinlastir">
+              <span class="magnifier-icon plus" aria-hidden="true"></span>
+            </button>
+            <button id="resetZoomButton" type="button" title="Zoom sifirla">Reset Zoom</button>
             <button id="downloadChartButton" type="button" title="Grafigi PNG indir">PNG</button>
           </div>
         </div>
