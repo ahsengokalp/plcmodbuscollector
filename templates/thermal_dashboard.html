@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dikkan Dashboard</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/logod.png', v=asset_version) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css', v=asset_version) }}">
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <img src="{{ url_for('static', filename='images/logo.png', v=asset_version) }}" alt="Dikkan">
+        <span>Dashboard</span>
+      </div>
+      <nav class="main-nav" aria-label="Sayfalar">
+        <a href="/">Genel</a>
+        <a class="active" href="/dashboard">Dashboard</a>
+        <a href="/f1">F_1</a>
+        <a href="/f2">F_2</a>
+        <a href="/history">Veri Gecmisi</a>
+      </nav>
+      <div class="toolbar">
+        <label class="tag-picker trend-limit-picker">
+          <span>Trend</span>
+          <select id="limitSelect">
+            <option value="60">60 kayit</option>
+            <option value="120" selected>120 kayit</option>
+            <option value="240">240 kayit</option>
+          </select>
+        </label>
+        <span id="generatedAt">-</span>
+        <button id="refreshButton" type="button">Yenile</button>
+      </div>
+    </header>
+
+    <main class="shell trend-shell">
+      <section class="status-grid trend-status-grid" aria-label="Dashboard ozet">
+        <article class="status-card primary">
+          <span>Ekran</span>
+          <strong>Trend</strong>
+          <small>Firin 1/2 termal izleme</small>
+        </article>
+        <article class="status-card">
+          <span>FIRIN_1 Son Deger</span>
+          <strong id="f1LatestValue">-</strong>
+          <small id="f1LatestTime">-</small>
+        </article>
+        <article class="status-card">
+          <span>FIRIN_2 Son Deger</span>
+          <strong id="f2LatestValue">-</strong>
+          <small id="f2LatestTime">-</small>
+        </article>
+        <article class="status-card">
+          <span>Kayit Araligi</span>
+          <strong id="sampleStep">120</strong>
+          <small>son kayit</small>
+        </article>
+      </section>
+
+      <section class="chart-panel trend-panel">
+        <div class="panel-title">
+          <div>
+            <h1>FIRIN 1/2 TERMAL VERI GECMISI</h1>
+            <p id="chartSubtitle">FIRIN_1 yesil, FIRIN_2 turuncu trend.</p>
+          </div>
+          <div class="trend-legend" aria-label="Trend renkleri">
+            <span><i class="legend-green"></i>FIRIN_1 YESIL</span>
+            <span><i class="legend-orange"></i>FIRIN_2 TURUNCU</span>
+          </div>
+        </div>
+        <canvas id="thermalTrendChart" height="460"></canvas>
+      </section>
+    </main>
+
+    <div class="toast" id="errorToast" role="status"></div>
+    <script src="{{ url_for('static', filename='thermal_dashboard.js', v=asset_version) }}"></script>
+  </body>
+</html>

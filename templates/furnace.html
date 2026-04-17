@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dikkan {{ furnace_title }}</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/logod.png', v=asset_version) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css', v=asset_version) }}">
+  </head>
+  <body data-furnace-id="{{ furnace_id }}">
+    <header class="topbar">
+      <div class="brand">
+        <img src="{{ url_for('static', filename='images/logo.png', v=asset_version) }}" alt="Dikkan">
+        <span>{{ furnace_title }} Biyet Takip</span>
+      </div>
+      <nav class="main-nav" aria-label="Sayfalar">
+        <a href="/">Genel</a>
+        <a href="/dashboard">Dashboard</a>
+        <a class="{{ 'active' if furnace_id == 'f1' else '' }}" href="/f1">F_1</a>
+        <a class="{{ 'active' if furnace_id == 'f2' else '' }}" href="/f2">F_2</a>
+        <a href="/history">Veri Gecmisi</a>
+      </nav>
+      <div class="toolbar">
+        <span id="generatedAt">-</span>
+        <button id="refreshButton" type="button">Yenile</button>
+      </div>
+    </header>
+
+    <main class="shell furnace-shell">
+      <section class="status-grid furnace-status-grid" aria-label="{{ furnace_title }} ozet">
+        <article class="status-card primary">
+          <span>Firin</span>
+          <strong>{{ furnace_title }}</strong>
+          <small>Biyet takip</small>
+        </article>
+        <article class="status-card">
+          <span>Giris Biyet No</span>
+          <strong id="girisBiyetNo">-</strong>
+        </article>
+        <article class="status-card">
+          <span>Cikis Biyet No</span>
+          <strong id="cikisBiyetNo">-</strong>
+        </article>
+        <article class="status-card">
+          <span>Son Guncelleme</span>
+          <strong class="time-value" id="lastUpdate">-</strong>
+        </article>
+      </section>
+
+      <section class="content-grid furnace-content-grid">
+        <section class="panel">
+          <div class="panel-title compact">
+            <div>
+              <h2>Giris Gecmisi</h2>
+              <p>Son giris biyet hareketleri</p>
+            </div>
+            <span id="entryCount">-</span>
+          </div>
+          <div class="table-wrap furnace-table-wrap entry-table-wrap">
+            <table class="furnace-table entry-table">
+              <thead>
+                <tr>
+                  <th>Tarih</th>
+                  <th>Saat</th>
+                  <th>Giris Biyet No</th>
+                </tr>
+              </thead>
+              <tbody id="entryHistory"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel furnace-records-panel">
+          <div class="panel-title compact">
+            <div>
+              <h2>Cikis ve Isil Islem Kayitlari</h2>
+              <p>Ham isi, pik isi ve yatak sureleri</p>
+            </div>
+            <span id="rowCount">-</span>
+          </div>
+          <div class="table-wrap furnace-table-wrap">
+            <table class="furnace-table records-table">
+              <thead>
+                <tr>
+                  <th>Tarih</th>
+                  <th>Saat</th>
+                  <th>Cikis Biyet No</th>
+                  <th>Ham Isi</th>
+                  <th>Pik Isi</th>
+                  <th>Isinma Dk</th>
+                  <th>Isinma Sn</th>
+                  <th>V Giris Isi</th>
+                  <th>V Cikis Isi</th>
+                  <th>Yatak Dk</th>
+                  <th>Yatak Sn</th>
+                </tr>
+              </thead>
+              <tbody id="furnaceRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <div class="toast" id="errorToast" role="status"></div>
+    <script src="{{ url_for('static', filename='furnace.js', v=asset_version) }}"></script>
+  </body>
+</html>

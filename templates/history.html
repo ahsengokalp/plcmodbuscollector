@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dikkan Veri Gecmisi</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/logod.png', v=asset_version) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css', v=asset_version) }}">
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <img src="{{ url_for('static', filename='images/logo.png', v=asset_version) }}" alt="Dikkan">
+        <span>Veri Gecmisi</span>
+      </div>
+      <nav class="main-nav" aria-label="Sayfalar">
+        <a href="/">Genel</a>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/f1">F_1</a>
+        <a href="/f2">F_2</a>
+        <a class="active" href="/history">Veri Gecmisi</a>
+      </nav>
+      <div class="toolbar">
+        <label class="tag-picker history-limit-picker">
+          <span>Ornek</span>
+          <select id="limitSelect">
+            <option value="25">25 kayit</option>
+            <option value="50" selected>50 kayit</option>
+            <option value="100">100 kayit</option>
+          </select>
+        </label>
+        <span id="generatedAt">-</span>
+        <button id="refreshButton" type="button">Yenile</button>
+      </div>
+    </header>
+
+    <main class="shell history-shell">
+      <section class="status-grid history-status-grid" aria-label="Veri gecmisi ozeti">
+        <article class="status-card primary">
+          <span>Sayfa</span>
+          <strong>Termal</strong>
+          <small>Ortam isi gecmisi</small>
+        </article>
+        <article class="status-card">
+          <span>FIRIN_1 Son Deger</span>
+          <strong id="f1LatestValue">-</strong>
+          <small id="f1LatestTime">-</small>
+        </article>
+        <article class="status-card">
+          <span>FIRIN_2 Son Deger</span>
+          <strong id="f2LatestValue">-</strong>
+          <small id="f2LatestTime">-</small>
+        </article>
+        <article class="status-card">
+          <span>Ornekleme Adimi</span>
+          <strong id="sampleStep">50</strong>
+          <small>kayit</small>
+        </article>
+      </section>
+
+      <section class="history-grid">
+        <section class="panel history-panel">
+          <div class="panel-title compact">
+            <div>
+              <h2>FIRIN_1 Termal Veri Gecmisi</h2>
+              <p>FIRIN_1 ortam isi kayitlari</p>
+            </div>
+            <span id="f1Count">-</span>
+          </div>
+          <div class="table-wrap history-table-wrap">
+            <table class="history-table">
+              <thead>
+                <tr>
+                  <th>No</th>
+                  <th>Tarih</th>
+                  <th>Saat</th>
+                  <th>FIRIN_1 Ortam Isi</th>
+                </tr>
+              </thead>
+              <tbody id="f1Rows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel history-panel">
+          <div class="panel-title compact">
+            <div>
+              <h2>FIRIN_2 Termal Veri Gecmisi</h2>
+              <p>FIRIN_2 ortam isi kayitlari</p>
+            </div>
+            <span id="f2Count">-</span>
+          </div>
+          <div class="table-wrap history-table-wrap">
+            <table class="history-table">
+              <thead>
+                <tr>
+                  <th>No</th>
+                  <th>Tarih</th>
+                  <th>Saat</th>
+                  <th>FIRIN_2 Ortam Isi</th>
+                </tr>
+              </thead>
+              <tbody id="f2Rows"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <div class="toast" id="errorToast" role="status"></div>
+    <script src="{{ url_for('static', filename='history.js', v=asset_version) }}"></script>
+  </body>
+</html>
