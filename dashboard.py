@@ -395,15 +395,16 @@ def fetch_recent_changes(cur):
 
     changes = []
     for modbus_address, tag_name, old_value, new_value, changed_at in cur.fetchall():
-        old_value = int(old_value)
         new_value = int(new_value)
+        old_display = "-" if old_value is None else int(old_value)
+        delta = 0 if old_value is None else new_value - int(old_value)
         changes.append(
             {
                 "modbus_address": modbus_address,
                 "tag_name": tag_name,
-                "old_value": old_value,
+                "old_value": old_display,
                 "new_value": new_value,
-                "delta": new_value - old_value,
+                "delta": delta,
                 "changed_at": format_datetime(changed_at),
                 "status": value_status(new_value),
             }
