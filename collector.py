@@ -1,7 +1,4 @@
-from datetime import datetime, timezone, timedelta
 import time
-
-TZ_TR = timezone(timedelta(hours=3))
 
 from pymodbus.client import ModbusTcpClient
 
@@ -16,6 +13,7 @@ from config import (
     TAGS,
 )
 from db import get_db_connection
+from time_utils import db_now
 
 
 def read_modbus_data():
@@ -105,7 +103,7 @@ def insert_initial_current_values(data):
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        upsert_current_values(cur, data, datetime.now(TZ_TR))
+        upsert_current_values(cur, data, db_now())
         conn.commit()
         print(f"Initial current load completed: {len(data)} records")
 
@@ -137,13 +135,12 @@ def process_changes(data, current_values):
             VALUES (%s, %s, %s, %s, %s)
         """
 
-        now = datetime.now(TZ_TR)
+        now = db_now()
 
         for modbus_address, tag_name, new_value in data:
             old_value = current_values.get(modbus_address)
 
             if old_value is None:
-                upsert_current_values(cur, [(modbus_address, tag_name, new_value)], now)
                 current_values[modbus_address] = new_value
                 continue
 
@@ -152,10 +149,10 @@ def process_changes(data, current_values):
                     history_insert_query,
                     (modbus_address, tag_name, old_value, new_value, now),
                 )
-                upsert_current_values(cur, [(modbus_address, tag_name, new_value)], now)
                 current_values[modbus_address] = new_value
                 change_count += 1
 
+        upsert_current_values(cur, data, now)
         conn.commit()
         print(f"Changes saved: {change_count}" if change_count else "No change")
 
