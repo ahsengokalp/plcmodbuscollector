@@ -7,11 +7,18 @@ const elements = {
   f1LatestTime: document.getElementById("f1LatestTime"),
   f1Count: document.getElementById("f1Count"),
   f1Rows: document.getElementById("f1Rows"),
+  downloadF1Button: document.getElementById("downloadF1Button"),
   f2LatestValue: document.getElementById("f2LatestValue"),
   f2LatestTime: document.getElementById("f2LatestTime"),
   f2Count: document.getElementById("f2Count"),
   f2Rows: document.getElementById("f2Rows"),
+  downloadF2Button: document.getElementById("downloadF2Button"),
   errorToast: document.getElementById("errorToast"),
+};
+
+let historyData = {
+  f1: [],
+  f2: [],
 };
 
 function showError(message) {
@@ -66,6 +73,9 @@ function renderHistory(payload) {
   const f1 = payload.histories.f1;
   const f2 = payload.histories.f2;
 
+  historyData.f1 = f1.rows;
+  historyData.f2 = f2.rows;
+
   elements.generatedAt.textContent = `Guncel: ${payload.generated_at}`;
   elements.sampleStep.textContent = payload.limit;
 
@@ -78,6 +88,41 @@ function renderHistory(payload) {
   elements.f2LatestTime.textContent = f2.latest_time;
   elements.f2Count.textContent = `${f2.rows.length} kayit`;
   renderRows(elements.f2Rows, f2.rows, "FIRIN_2 icin termal veri yok.");
+}
+
+function createCsvLine(values) {
+  return values
+    .map((value) => `"${String(value).replace(/"/g, '""')}"`)
+    .join(",");
+}
+
+function downloadCsv(filename, headers, rows) {
+  const lines = [createCsvLine(headers)];
+  rows.forEach((row) => {
+    lines.push(createCsvLine([row.no, row.date, row.time, row.value]));
+  });
+
+  const blob = new Blob([lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function downloadHistory(type) {
+  const rows = historyData[type] || [];
+  if (!rows.length) {
+    showError("Indirmek icin yeterli veri yok.");
+    return;
+  }
+
+  const headers = ["No", "Tarih", "Saat", "Sicaklik"];
+  const filename = type === "f1" ? "firin_1_veri_gecmisi.csv" : "firin_2_veri_gecmisi.csv";
+  downloadCsv(filename, headers, rows);
 }
 
 async function loadHistory() {
@@ -99,6 +144,8 @@ async function loadHistory() {
 
 elements.refreshButton.addEventListener("click", loadHistory);
 elements.limitSelect.addEventListener("change", loadHistory);
+elements.downloadF1Button.addEventListener("click", () => downloadHistory("f1"));
+elements.downloadF2Button.addEventListener("click", () => downloadHistory("f2"));
 
 loadHistory();
 setInterval(loadHistory, 5000);

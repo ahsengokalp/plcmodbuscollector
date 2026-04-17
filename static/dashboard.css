@@ -289,6 +289,28 @@ body {
   border-bottom: 1px solid var(--line);
 }
 
+.panel-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.panel-actions button {
+  min-width: 66px;
+  padding: 6px 10px;
+  border: 1px solid rgba(16, 24, 40, 0.12);
+  border-radius: 6px;
+  background: #ffffff;
+  color: #101828;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.panel-actions button:hover {
+  background: #f8fafc;
+}
+
 .panel-title h1,
 .panel-title h2 {
   margin: 0;
