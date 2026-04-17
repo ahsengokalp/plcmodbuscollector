@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dikkan Health</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/logod.png', v=asset_version) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css', v=asset_version) }}">
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <img src="{{ url_for('static', filename='images/logo.png', v=asset_version) }}" alt="Dikkan">
+        <span>Health</span>
+      </div>
+      <nav class="main-nav" aria-label="Sayfalar">
+        <a href="/">Genel</a>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/f1">F_1</a>
+        <a href="/f2">F_2</a>
+        <a href="/history">Veri Gecmisi</a>
+        <a class="active" href="/health">Health</a>
+      </nav>
+      <div class="toolbar">
+        <span id="generatedAt">-</span>
+        <button id="refreshButton" type="button">Yenile</button>
+      </div>
+    </header>
+
+    <main class="shell health-shell">
+      <section class="status-grid health-status-grid" aria-label="Health ozet">
+        <article class="status-card primary" id="overallCard">
+          <span>Sistem Durumu</span>
+          <strong id="overallState">-</strong>
+          <small id="overallMessage">-</small>
+        </article>
+        <article class="status-card" id="deviceCard">
+          <span>Cihaz Verisi</span>
+          <strong id="deviceState">-</strong>
+          <small id="deviceMessage">-</small>
+        </article>
+        <article class="status-card">
+          <span>Son Veri</span>
+          <strong class="time-value" id="lastDeviceUpdate">-</strong>
+          <small id="staleLimit">-</small>
+        </article>
+        <article class="status-card">
+          <span>Toplam Tag</span>
+          <strong id="healthTagCount">-</strong>
+          <small>izlenen adres</small>
+        </article>
+      </section>
+
+      <section class="panel health-panel">
+        <div class="panel-title compact">
+          <div>
+            <h1>Cihaz ve Veri Akisi</h1>
+            <p>Veri gelmezse veya cihaz kaynakli problem olursa burada gorunur.</p>
+          </div>
+        </div>
+        <div class="health-list">
+          <article class="health-row" id="databaseRow">
+            <span class="health-dot" aria-hidden="true"></span>
+            <div>
+              <strong>Veritabani</strong>
+              <small id="databaseMessage">-</small>
+            </div>
+            <span id="databaseState">-</span>
+          </article>
+          <article class="health-row" id="collectorRow">
+            <span class="health-dot" aria-hidden="true"></span>
+            <div>
+              <strong>Cihaz Okuma</strong>
+              <small id="collectorMessage">-</small>
+            </div>
+            <span id="collectorState">-</span>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <div class="toast" id="errorToast" role="status"></div>
+    <script src="{{ url_for('static', filename='health.js', v=asset_version) }}"></script>
+  </body>
+</html>

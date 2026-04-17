@@ -348,7 +348,6 @@ def build_history_payload(limit):
 
 def build_thermal_dashboard_payload(limit):
     series = {}
-    all_values = []
 
     with get_db_connection() as conn:
         with conn.cursor() as cur:
@@ -359,7 +358,6 @@ def build_thermal_dashboard_payload(limit):
                     config["fallback_tag_name"],
                     limit,
                 )
-                all_values.extend(point["value"] for point in points)
                 latest = points[-1] if points else None
                 series[series_id] = {
                     "label": config["label"],
@@ -370,15 +368,12 @@ def build_thermal_dashboard_payload(limit):
                     "points": points,
                 }
 
-    max_value = max(all_values) if all_values else 1000
-    y_axis_max = max(1000, ((max_value + 124) // 125) * 125)
-
     return {
         "generated_at": format_datetime(datetime.now()),
         "limit": limit,
         "y_axis": {
             "min": 0,
-            "max": y_axis_max,
+            "max": 1000,
             "step": 125,
         },
         "series": series,
@@ -526,6 +521,94 @@ def build_dashboard_payload():
     }
 
 
+def health_label(state):
+    labels = {
+        "ok": "OK",
+        "warning": "UYARI",
+        "critical": "HATA",
+    }
+    return labels.get(state, "BILINMIYOR")
+
+
+def build_health_payload():
+    now = datetime.now()
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            current_values = fetch_current_values(cur)
+
+    last_update = newest_update(current_values)
+    stale_limit = now - timedelta(minutes=DASHBOARD_STALE_MINUTES)
+
+    if not current_values:
+        device_state = "critical"
+        device_message = "Cihazdan veri alinamadi; izlenen tag bulunmuyor."
+    elif last_update is None:
+        device_state = "critical"
+        device_message = "Cihaz verisi geldi ancak son guncelleme zamani okunamadi."
+    elif last_update < stale_limit:
+        device_state = "critical"
+        device_message = (
+            f"Cihazdan {DASHBOARD_STALE_MINUTES} dakikadan uzun suredir yeni veri gelmiyor."
+        )
+    else:
+        device_state = "ok"
+        device_message = "Cihazdan veri akisi normal."
+
+    overall_message = (
+        "Sistem calisiyor; cihaz verisi guncel."
+        if device_state == "ok"
+        else "Cihaz kaynakli veri akisi kontrol edilmeli."
+    )
+
+    return {
+        "generated_at": format_datetime(now),
+        "overall": {
+            "state": device_state,
+            "label": health_label(device_state),
+            "message": overall_message,
+        },
+        "database": {
+            "state": "ok",
+            "label": health_label("ok"),
+            "message": "Veritabani baglantisi ve okuma sorgusu basarili.",
+        },
+        "device": {
+            "state": device_state,
+            "label": health_label(device_state),
+            "message": device_message,
+            "last_update": format_datetime(last_update),
+            "stale_minutes": DASHBOARD_STALE_MINUTES,
+            "tag_count": len(current_values),
+        },
+    }
+
+
+def build_health_error_payload(error):
+    message = f"Veritabani veya uygulama verisi okunamadi: {error}"
+    return {
+        "generated_at": format_datetime(datetime.now()),
+        "overall": {
+            "state": "critical",
+            "label": health_label("critical"),
+            "message": "Health kontrolu hata verdi.",
+        },
+        "database": {
+            "state": "critical",
+            "label": health_label("critical"),
+            "message": message,
+        },
+        "device": {
+            "state": "critical",
+            "label": health_label("critical"),
+            "message": "Veritabani okunamadigi icin cihaz verisi dogrulanamadi.",
+            "last_update": "-",
+            "stale_minutes": DASHBOARD_STALE_MINUTES,
+            "tag_count": 0,
+        },
+    }
+
+
 @app.route("/")
 def dashboard_page():
     return render_template(
@@ -570,6 +653,14 @@ def history_page():
     )
 
 
+@app.route("/health")
+def health_page():
+    return render_template(
+        "health.html",
+        asset_version=datetime.now().strftime("%Y%m%d%H%M%S"),
+    )
+
+
 @app.route("/api/dashboard")
 def dashboard_api():
     try:
@@ -585,6 +676,14 @@ def dashboard_api():
             ),
             500,
         )
+
+
+@app.route("/api/health")
+def health_api():
+    try:
+        return jsonify(build_health_payload())
+    except Exception as exc:
+        return jsonify(build_health_error_payload(exc)), 503
 
 
 @app.route("/api/thermal-dashboard")

@@ -108,22 +108,25 @@ function selectedTagName() {
 }
 
 function renderActivitySummary() {
-  const latestChange = state.recentChanges[0];
-  const mostChanged = state.topChangedTags[0];
+  const changes = state.selectedAddress === "all" ? state.recentChanges : selectedChanges();
+  const latestChange = changes[0];
+  const mostChanged = state.selectedAddress === "all"
+    ? state.topChangedTags[0]
+    : latestChange;
 
   elements.latestChangedTag.textContent = latestChange
     ? `${latestChange.modbus_address} - ${latestChange.tag_name}`
     : "-";
   elements.mostChangedTag.textContent = mostChanged
-    ? `${mostChanged.tag_name} (${mostChanged.change_count})`
+    ? `${mostChanged.tag_name}${mostChanged.change_count ? ` (${mostChanged.change_count})` : ""}`
     : "-";
   elements.latestChangeTime.textContent = latestChange ? latestChange.changed_at : "-";
 }
 
 function renderChartPanel() {
   const isAllTags = state.selectedAddress === "all";
-  elements.activitySummary.classList.toggle("is-hidden", !isAllTags);
-  elements.trendChart.classList.toggle("is-hidden", isAllTags);
+  elements.activitySummary.classList.remove("is-hidden");
+  elements.trendChart.classList.add("is-hidden");
 
   if (isAllTags) {
     elements.chartTitle.textContent = "Genel Aktivite";
@@ -132,9 +135,9 @@ function renderChartPanel() {
     return;
   }
 
-  elements.chartTitle.textContent = "Canli Deger Trendi";
+  elements.chartTitle.textContent = "Secili Tag Aktivitesi";
   elements.chartSubtitle.textContent = selectedTagName();
-  drawTrendChart();
+  renderActivitySummary();
 }
 
 function drawTrendChart() {
@@ -329,7 +332,7 @@ elements.tagSelect.addEventListener("change", () => {
 });
 elements.refreshButton.addEventListener("click", loadDashboard);
 window.addEventListener("resize", () => {
-  if (state.selectedAddress !== "all") drawTrendChart();
+  renderChartPanel();
 });
 
 loadDashboard();

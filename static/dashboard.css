@@ -182,9 +182,101 @@ body {
   color: var(--amber);
 }
 
+.status-card.critical strong {
+  color: var(--red);
+}
+
 .chart-panel {
   margin-bottom: 14px;
   overflow: hidden;
+}
+
+.monitor-strip {
+  min-height: 30px;
+  display: grid;
+  grid-template-columns: minmax(180px, auto) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 2px 22px;
+  border-width: 0 0 1px;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.monitor-strip-title {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  white-space: nowrap;
+}
+
+.monitor-strip-title strong {
+  color: #101828;
+  font-size: 12px;
+}
+
+.monitor-strip-title span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+}
+
+.monitor-strip .activity-summary {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 0;
+}
+
+.monitor-strip .activity-summary article {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 5px;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.monitor-strip .activity-summary span {
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.monitor-strip .activity-summary strong {
+  max-width: 230px;
+  margin: 0;
+  overflow: hidden;
+  color: #101828;
+  font-size: 11px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.monitor-strip-count {
+  min-width: 56px;
+  border-radius: 4px;
+  padding: 3px 7px;
+  background: #eef4ff;
+  color: var(--blue);
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.monitor-strip canvas {
+  display: none !important;
 }
 
 .panel-title {
@@ -559,6 +651,92 @@ td {
   color: var(--red);
 }
 
+.health-shell {
+  max-width: 1320px;
+}
+
+.health-status-grid {
+  grid-template-columns: 1.15fr repeat(3, 1fr);
+}
+
+.health-panel {
+  overflow: hidden;
+}
+
+.health-list {
+  display: grid;
+  gap: 0;
+}
+
+.health-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 70px;
+  padding: 14px 16px;
+  border-top: 1px solid var(--line);
+}
+
+.health-row:first-child {
+  border-top: 0;
+}
+
+.health-row strong,
+.health-row small {
+  display: block;
+}
+
+.health-row strong {
+  color: #101828;
+  font-size: 15px;
+}
+
+.health-row small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.health-row > span:last-child {
+  min-width: 72px;
+  border-radius: 4px;
+  padding: 6px 10px;
+  background: #ecfdf3;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.health-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.12);
+}
+
+.health-row.warning .health-dot {
+  background: var(--amber);
+  box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.14);
+}
+
+.health-row.warning > span:last-child {
+  background: #fffaeb;
+  color: var(--amber);
+}
+
+.health-row.critical .health-dot {
+  background: var(--red);
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.14);
+}
+
+.health-row.critical > span:last-child {
+  background: #fef2f2;
+  color: var(--red);
+}
+
 .trend-shell {
   max-width: 1680px;
   padding: 14px;
@@ -732,6 +910,17 @@ td {
     grid-template-columns: 1fr;
   }
 
+  .monitor-strip {
+    grid-template-columns: 1fr auto;
+    min-height: 44px;
+  }
+
+  .monitor-strip .activity-summary {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    overflow: hidden;
+  }
+
   .panel-title.compact {
     align-items: stretch;
     flex-direction: column;
@@ -820,6 +1009,22 @@ td {
 
   .main-nav a {
     width: 100%;
+  }
+
+  .monitor-strip {
+    padding: 6px 12px;
+  }
+
+  .monitor-strip-title {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .monitor-strip .activity-summary {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
   }
 
   .status-card .time-value {

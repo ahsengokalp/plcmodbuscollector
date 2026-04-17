@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Dikkan PLC Dashboard</title>
+    <title>Dikkan PLC Monitor</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/logod.png', v=asset_version) }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css', v=asset_version) }}">
   </head>
@@ -11,7 +11,7 @@
     <header class="topbar">
       <div class="brand">
         <img src="{{ url_for('static', filename='images/logo.png', v=asset_version) }}" alt="Dikkan">
-        <span>PLC Dashboard</span>
+        <span>PLC Monitor</span>
       </div>
       <nav class="main-nav" aria-label="Sayfalar">
         <a class="active" href="/">Genel</a>
@@ -19,6 +19,7 @@
         <a href="/f1">F_1</a>
         <a href="/f2">F_2</a>
         <a href="/history">Veri Gecmisi</a>
+        <a href="/health">Health</a>
       </nav>
       <div class="toolbar">
         <label class="tag-picker">
@@ -31,6 +32,29 @@
         <button id="refreshButton" type="button">Yenile</button>
       </div>
     </header>
+
+    <section class="chart-panel monitor-strip" aria-label="Genel aktivite">
+      <div class="monitor-strip-title">
+        <strong id="chartTitle">Genel Aktivite</strong>
+        <span id="chartSubtitle">Tum taglerdeki son degisim ozeti.</span>
+      </div>
+      <div class="activity-summary" id="activitySummary">
+        <article>
+          <span>Son Degisen Tag</span>
+          <strong id="latestChangedTag">-</strong>
+        </article>
+        <article>
+          <span>En Hareketli Tag</span>
+          <strong id="mostChangedTag">-</strong>
+        </article>
+        <article>
+          <span>Son Degisim</span>
+          <strong id="latestChangeTime">-</strong>
+        </article>
+      </div>
+      <span class="monitor-strip-count" id="recentChangeCount">-</span>
+      <canvas id="trendChart" class="is-hidden" height="90"></canvas>
+    </section>
 
     <main class="shell">
       <section class="status-grid" aria-label="Ozet">
@@ -51,31 +75,6 @@
           <span>Bugun Degisen</span>
           <strong id="changesToday">-</strong>
         </article>
-      </section>
-
-      <section class="chart-panel">
-        <div class="panel-title">
-          <div>
-            <h1 id="chartTitle">Genel Aktivite</h1>
-            <p id="chartSubtitle">Tum taglerdeki son degisim ozeti.</p>
-          </div>
-          <span id="recentChangeCount">-</span>
-        </div>
-        <div class="activity-summary" id="activitySummary">
-          <article>
-            <span>Son Degisen Tag</span>
-            <strong id="latestChangedTag">-</strong>
-          </article>
-          <article>
-            <span>En Hareketli Tag</span>
-            <strong id="mostChangedTag">-</strong>
-          </article>
-          <article>
-            <span>Son Degisim</span>
-            <strong id="latestChangeTime">-</strong>
-          </article>
-        </div>
-        <canvas id="trendChart" class="is-hidden" height="260"></canvas>
       </section>
 
       <section class="content-grid">
