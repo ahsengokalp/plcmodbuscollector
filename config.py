@@ -1,13 +1,37 @@
 import os
 
 
+def _resolve_env_placeholder(value):
+    if not isinstance(value, str):
+        return value
+
+    value = value.strip()
+    if not (value.startswith("${") and value.endswith("}")):
+        return value
+
+    expression = value[2:-1]
+    if ":-" in expression:
+        name, fallback = expression.split(":-", 1)
+    elif "-" in expression:
+        name, fallback = expression.split("-", 1)
+    else:
+        return os.getenv(expression, "")
+
+    resolved = os.getenv(name)
+    if isinstance(resolved, str) and resolved.strip().startswith("${"):
+        resolved = ""
+    return fallback if resolved in (None, "") else resolved
+
+
 def _env_int(name, default):
     value = os.getenv(name)
+    value = _resolve_env_placeholder(value)
     return default if value in (None, "") else int(value)
 
 
 def _env_str(name, default):
-    return os.getenv(name, default)
+    value = _resolve_env_placeholder(os.getenv(name))
+    return default if value in (None, "") else value
 
 
 TAGS = [
