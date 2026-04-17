@@ -1,0 +1,14 @@
+name: plcmodbuscollector
+
+services:
+  plcmodbuscollector:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: plcmodbuscollector
+    container_name: plcmodbuscollector
+    env_file:
+      - .env
+    ports:
+      - "5059:5059"
+    restart: always
